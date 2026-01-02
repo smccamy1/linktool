@@ -298,13 +298,12 @@ class DataIngestor:
             print(f"Inserted {len(data['verifications'])} verifications into MongoDB")
             
             # Also index verifications in OpenSearch
-            # Need to convert MongoDB ObjectId to string for OpenSearch
+            # Need to remove MongoDB _id field for OpenSearch
             for verification in data['verifications']:
                 # Create a copy to avoid modifying the original
                 os_doc = verification.copy()
-                # Convert ObjectId to string if present
-                if '_id' in os_doc:
-                    os_doc['_id'] = str(os_doc['_id'])
+                # Remove _id field if present (it's metadata in OpenSearch)
+                os_doc.pop('_id', None)
                 
                 self.opensearch.index(
                     index='idv_verifications',
