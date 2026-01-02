@@ -208,28 +208,55 @@ class DataIngestor:
         self.mongo_client = MongoClient(mongo_uri)
         self.db = self.mongo_client['idv_data']
         
-        # OpenSearch connection with better error handling
-        try:
-            self.opensearch = OpenSearch(
-                hosts=[{'host': opensearch_host, 'port': opensearch_port}],
-                http_auth=(opensearch_user, opensearch_password),
-                use_ssl=True,
-                verify_certs=False,
-                ssl_show_warn=False,
-                ssl_assert_hostname=False,
-                timeout=30,
-                max_retries=3,
-                retry_on_timeout=True
-            )
-            
-            # Test connection
-            info = self.opensearch.info()
-            print(f"✓ Connected to OpenSearch version {info['version']['number']}")
-        except Exception as e:
-            print(f"Error connecting to OpenSearch: {e}")
-            print(f"Host: {opensearch_host}:{opensearch_port}")
-            print(f"User: {opensearch_user}")
-            raise
+        # OpenSearch connection with retry logic for authentication
+        max_retries = 5
+        retry_delay = 5
+        
+        for attempt in range(max_retries):
+            try:
+                print(f"Connecting to OpenSearch at {opensearch_host}:{opensearch_port}... (attempt {attempt + 1}/{max_retries})")
+                self.opensearch = OpenSearch(
+                    hosts=[{'host': opensearch_host, 'port': opensearch_port}],
+                    http_auth=(opensearch_user, opensearch_password),
+                    use_ssl=True,
+                    verify_certs=False,
+                    ssl_show_warn=False,
+                    ssl_assert_hostname=False,
+                    timeout=30,
+                    max_retries=3,
+                    retry_on_timeout=True
+                )
+                
+                # Test connection
+                info = self.opensearch.info()
+                print(f"✓ Connected to OpenSearch version {info['version']['number']}")
+                break
+                
+            except Exception as e:
+                error_msg = str(e)
+                if '401' in error_msg or 'Unauthorized' in error_msg:
+                    print(f"Authentication failed (attempt {attempt + 1}/{max_retries})")
+                    if attempt < max_retries - 1:
+                        print(f"OpenSearch may still be initializing. Waiting {retry_delay} seconds...")
+                        import time
+                        time.sleep(retry_delay)
+                    else:
+                        print(f"\nError: Authentication failed after {max_retries} attempts")
+                        print(f"Host: {opensearch_host}:{opensearch_port}")
+                        print(f"User: {opensearch_user}")
+                        print(f"\nPlease verify:")
+                        print("  1. OpenSearch container is running: docker ps | grep opensearch")
+                        print("  2. Check OpenSearch logs: docker logs lynx-opensearch")
+                        print(f"  3. Try manually: curl -ku {opensearch_user}:{opensearch_password} https://localhost:{opensearch_port}")
+                        raise
+                else:
+                    print(f"Connection error: {e}")
+                    if attempt < max_retries - 1:
+                        print(f"Retrying in {retry_delay} seconds...")
+                        import time
+                        time.sleep(retry_delay)
+                    else:
+                        raise
         
         # Create OpenSearch indices if they don't exist
         self._setup_opensearch_indices()
