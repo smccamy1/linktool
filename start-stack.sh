@@ -261,6 +261,20 @@ if [ "$SKIP_DATA_GENERATION" = false ]; then
     if [ ! -d "venv" ]; then
         echo -e "${YELLOW}Creating new virtual environment...${NC}"
         python3 -m venv venv
+        
+        if [ $? -ne 0 ]; then
+            echo -e "${RED}Failed to create virtual environment.${NC}"
+            echo -e "${YELLOW}Trying to install python3-venv...${NC}"
+            sudo apt-get update
+            DEBIAN_FRONTEND=noninteractive sudo apt-get install -y python3-venv
+            python3 -m venv venv
+        fi
+        
+        if [ ! -f "venv/bin/activate" ]; then
+            echo -e "${RED}Virtual environment creation failed. Please check python3-venv installation.${NC}"
+            exit 1
+        fi
+        
         echo -e "${GREEN}✓ Virtual environment created${NC}"
     else
         echo -e "${GREEN}✓ Virtual environment already exists${NC}"
