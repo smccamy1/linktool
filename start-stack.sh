@@ -252,8 +252,34 @@ if [ $ELAPSED -ge $MAX_WAIT ]; then
     exit 1
 fi
 
+# Additional wait for OpenSearch security to fully initialize
+echo ""
+echo -e "${YELLOW}Waiting for OpenSearch security to initialize...${NC}"
+echo "Testing OpenSearch authentication..."
+
+OPENSEARCH_READY=false
+for i in {1..10}; do
+    if curl -sku admin:Admin123! https://localhost:9200/_cluster/health >/dev/null 2>&1; then
+        echo -e "${GREEN}✓ OpenSearch authentication is working!${NC}"
+        OPENSEARCH_READY=true
+        break
+    fi
+    echo "  Attempt $i/10 - OpenSearch not ready yet, waiting..."
+    sleep 5
+done
+
+if [ "$OPENSEARCH_READY" = false ]; then
+    echo -e "${RED}OpenSearch authentication still failing after waiting.${NC}"
+    echo "Checking OpenSearch logs:"
+    docker logs lynx-opensearch --tail 50
+    echo ""
+    echo -e "${YELLOW}You can try running the data generation manually later with:${NC}"
+    echo "  source venv/bin/activate"
+    echo "  python generate_idv_data.py --num-users $NUM_USERS"
+fi
+
 # Install Python dependencies and generate data
-if [ "$SKIP_DATA_GENERATION" = false ]; then
+if [ "$SKIP_DATA_GENERATION" = false ] && [ "$OPENSEARCH_READY" = true ]; then
     echo ""
     echo -e "${YELLOW}Setting up Python virtual environment...${NC}"
     
