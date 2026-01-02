@@ -215,13 +215,13 @@ class DataIngestor:
         for attempt in range(max_retries):
             try:
                 print(f"Connecting to OpenSearch at {opensearch_host}:{opensearch_port}... (attempt {attempt + 1}/{max_retries})")
+                
+                # Try without authentication first (security disabled)
                 self.opensearch = OpenSearch(
                     hosts=[{'host': opensearch_host, 'port': opensearch_port}],
-                    http_auth=(opensearch_user, opensearch_password),
-                    use_ssl=True,
+                    use_ssl=False,
                     verify_certs=False,
                     ssl_show_warn=False,
-                    ssl_assert_hostname=False,
                     timeout=30,
                     max_retries=3,
                     retry_on_timeout=True

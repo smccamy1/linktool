@@ -260,13 +260,13 @@ fi
 
 # Additional wait for OpenSearch security to fully initialize
 echo ""
-echo -e "${YELLOW}Waiting for OpenSearch security to initialize...${NC}"
-echo "Testing OpenSearch authentication..."
+echo -e "${YELLOW}Waiting for OpenSearch to be fully ready...${NC}"
+echo "Testing OpenSearch connection..."
 
 OPENSEARCH_READY=false
 for i in {1..10}; do
-    if curl -sku admin:Admin123! https://localhost:9200/_cluster/health >/dev/null 2>&1; then
-        echo -e "${GREEN}✓ OpenSearch authentication is working!${NC}"
+    if curl -s http://localhost:9200/_cluster/health >/dev/null 2>&1; then
+        echo -e "${GREEN}✓ OpenSearch is accessible!${NC}"
         OPENSEARCH_READY=true
         break
     fi
@@ -275,7 +275,7 @@ for i in {1..10}; do
 done
 
 if [ "$OPENSEARCH_READY" = false ]; then
-    echo -e "${RED}OpenSearch authentication still failing after waiting.${NC}"
+    echo -e "${RED}OpenSearch still not responding after waiting.${NC}"
     echo "Checking OpenSearch logs:"
     docker logs lynx-opensearch --tail 50
     echo ""
@@ -345,12 +345,12 @@ echo ""
 echo "Services are accessible at:"
 echo ""
 echo -e "  ${GREEN}Node-RED:${NC}              http://localhost:1880"
-echo -e "  ${GREEN}OpenSearch:${NC}            https://localhost:9200"
+echo -e "  ${GREEN}OpenSearch:${NC}            http://localhost:9200"
 echo -e "  ${GREEN}OpenSearch Dashboards:${NC} http://localhost:5601"
 echo -e "  ${GREEN}MongoDB:${NC}               mongodb://localhost:27017"
 echo ""
 echo "Credentials:"
-echo -e "  ${YELLOW}OpenSearch:${NC}  admin / Admin123!"
+echo -e "  ${YELLOW}OpenSearch:${NC}  No authentication (security disabled for development)"
 echo -e "  ${YELLOW}MongoDB:${NC}     admin / mongopass123"
 echo ""
 echo "To view logs:"
