@@ -95,21 +95,55 @@ install_docker() {
     
     # Install Docker Engine
     sudo apt-get update
-    sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+    
+    # Use DEBIAN_FRONTEND to avoid interactive prompts
+    DEBIAN_FRONTEND=noninteractive sudo apt-get install -y \
+        docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+    
+    # Start Docker service explicitly
+    echo -e "${YELLOW}Starting Docker service...${NC}"
+    sudo systemctl start docker || true
+    sudo systemctl enable docker || true
+    
+    # Wait for Docker to be ready
+    echo -e "${YELLOW}Waiting for Docker daemon to be ready...${NC}"
+    MAX_WAIT=30
+    ELAPSED=0
+    while [ $ELAPSED -lt $MAX_WAIT ]; do
+        if sudo docker info >/dev/null 2>&1; then
+            break
+        fi
+        sleep 2
+        ELAPSED=$((ELAPSED + 2))
+    done
     
     # Add current user to docker group
     sudo usermod -aG docker $USER
     
     echo -e "${GREEN}Docker installed successfully!${NC}"
     echo -e "${YELLOW}Note: You may need to log out and back in for group changes to take effect.${NC}"
+    echo -e "${YELLOW}Or run: newgrp docker${NC}"
 }
 
 # Function to install Python and pip
 install_python() {
-    echo -e "${YELLOW}Installing Python 3 and pip...${NC}"
+    echo -e "${YELLOW}Installing Python 3, pip, and venv...${NC}"
     sudo apt-get update
-    sudo apt-get install -y python3 python3-pip python3-venv
+    DEBIAN_FRONTEND=noninteractive sudo apt-get install -y \
+        python3 \
+        python3-pip \
+        python3-venv \
+        python3-dev \
+        build-essential
     echo -e "${GREEN}Python installed successfully!${NC}"
+    
+    # Verify pip3 is working
+    if ! command_exists pip3; then
+        echo -e "${YELLOW}Ensuring pip3 is available...${NC}"
+        python3 -m ensurepip --upgrade
+    fi
+    
+    echo -e "${GREEN}✓ pip3 is ready${NC}"
 }
 
 # Check and install Docker
@@ -148,6 +182,16 @@ if ! command_exists python3; then
     fi
 else
     echo -e "${GREEN}✓ Python 3 is installed${NC}"
+fi
+
+# Ensure pip3 is installed
+if ! command_exists pip3; then
+    echo -e "${YELLOW}pip3 not found. Installing...${NC}"
+    sudo apt-get update
+    DEBIAN_FRONTEND=noninteractive sudo apt-get install -y python3-pip python3-venv
+    echo -e "${GREEN}✓ pip3 is installed${NC}"
+else
+    echo -e "${GREEN}✓ pip3 is installed${NC}"
 fi
 
 # Navigate to script directory
@@ -200,21 +244,32 @@ fi
 # Install Python dependencies and generate data
 if [ "$SKIP_DATA_GENERATION" = false ]; then
     echo ""
-    echo -e "${YELLOW}Setting up Python environment...${NC}"
+    echo -e "${YELLOW}Setting up Python virtual environment...${NC}"
     
     # Create virtual environment if it doesn't exist
     if [ ! -d "venv" ]; then
+        echo -e "${YELLOW}Creating new virtual environment...${NC}"
         python3 -m venv venv
+        echo -e "${GREEN}✓ Virtual environment created${NC}"
+    else
+        echo -e "${GREEN}✓ Virtual environment already exists${NC}"
     fi
     
     # Activate virtual environment and install dependencies
+    echo -e "${YELLOW}Activating virtual environment and installing dependencies...${NC}"
     source venv/bin/activate
-    pip install --upgrade pip
+    
+    # Upgrade pip in the venv
+    python -m pip install --upgrade pip
+    
+    # Install requirements
     pip install -r requirements.txt
+    
+    echo -e "${GREEN}✓ Python dependencies installed${NC}"
     
     echo ""
     echo -e "${YELLOW}Generating IDV data ($NUM_USERS users)...${NC}"
-    python3 generate_idv_data.py --num-users $NUM_USERS
+    python generate_idv_data.py --num-users $NUM_USERS
     
     deactivate
     
