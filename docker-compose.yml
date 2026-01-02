@@ -1,0 +1,94 @@
+version: '3.8'
+
+services:
+  # OpenSearch Service
+  opensearch:
+    image: opensearchproject/opensearch:2.11.1
+    container_name: lynx-opensearch
+    environment:
+      - discovery.type=single-node
+      - bootstrap.memory_lock=true
+      - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m"
+      - OPENSEARCH_INITIAL_ADMIN_PASSWORD=Admin123!
+      - plugins.security.disabled=false
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 65536
+        hard: 65536
+    volumes:
+      - opensearch-data:/usr/share/opensearch/data
+    ports:
+      - "9200:9200"
+      - "9600:9600"
+    networks:
+      - lynx-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -ku admin:Admin123! https://localhost:9200/_cluster/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # OpenSearch Dashboards
+  opensearch-dashboards:
+    image: opensearchproject/opensearch-dashboards:2.11.1
+    container_name: lynx-opensearch-dashboards
+    ports:
+      - "5601:5601"
+    environment:
+      OPENSEARCH_HOSTS: '["https://opensearch:9200"]'
+      OPENSEARCH_USERNAME: admin
+      OPENSEARCH_PASSWORD: Admin123!
+    networks:
+      - lynx-network
+    depends_on:
+      opensearch:
+        condition: service_healthy
+
+  # MongoDB Service
+  mongodb:
+    image: mongo:7.0
+    container_name: lynx-mongodb
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: mongopass123
+      MONGO_INITDB_DATABASE: idv_data
+    volumes:
+      - mongodb-data:/data/db
+      - ./mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+    ports:
+      - "27017:27017"
+    networks:
+      - lynx-network
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Node-RED Service
+  nodered:
+    image: nodered/node-red:latest
+    container_name: lynx-nodered
+    environment:
+      - TZ=America/New_York
+    volumes:
+      - nodered-data:/data
+    ports:
+      - "1880:1880"
+    networks:
+      - lynx-network
+    depends_on:
+      - mongodb
+      - opensearch
+
+networks:
+  lynx-network:
+    driver: bridge
+
+volumes:
+  opensearch-data:
+  mongodb-data:
+  nodered-data:
