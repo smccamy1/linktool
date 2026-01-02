@@ -194,6 +194,17 @@ else
     echo -e "${GREEN}✓ pip3 is installed${NC}"
 fi
 
+# Ensure python3-venv is installed
+echo -e "${YELLOW}Checking for python3-venv...${NC}"
+if ! dpkg -l | grep -q python3-venv; then
+    echo -e "${YELLOW}python3-venv not found. Installing...${NC}"
+    sudo apt-get update
+    DEBIAN_FRONTEND=noninteractive sudo apt-get install -y python3-venv
+    echo -e "${GREEN}✓ python3-venv is installed${NC}"
+else
+    echo -e "${GREEN}✓ python3-venv is already installed${NC}"
+fi
+
 # Navigate to script directory
 cd "$SCRIPT_DIR"
 
