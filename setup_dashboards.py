@@ -487,6 +487,25 @@ def main():
         print(f"✗ Cannot connect to OpenSearch Dashboards: {e}")
         return
     
+    # Verify data exists
+    try:
+        response = requests.get(f"{OPENSEARCH_URL}/idv_verifications/_count")
+        count = response.json().get('count', 0)
+        print(f"✓ Found {count} documents in idv_verifications index")
+        if count == 0:
+            print("\n⚠ Warning: No data found in index. Run generate_idv_data.py first!")
+            print()
+        
+        # Get a sample document to verify field names
+        response = requests.get(f"{OPENSEARCH_URL}/idv_verifications/_search?size=1")
+        if response.status_code == 200:
+            hits = response.json().get('hits', {}).get('hits', [])
+            if hits:
+                sample = hits[0]['_source']
+                print(f"✓ Sample document fields: {', '.join(sample.keys())}")
+    except Exception as e:
+        print(f"⚠ Warning: Could not verify index data: {e}")
+    
     print()
     
     # Create index pattern
@@ -505,6 +524,8 @@ def main():
     print("=" * 60)
     print(f"\nOpen OpenSearch Dashboards: {DASHBOARDS_URL}")
     print("Navigate to Dashboards → IDV Analytics Dashboard")
+    print("\n⚠ Important: Set the time range in the dashboard to 'Last 90 days' or 'Last year'")
+    print("   to see your data (click the calendar icon in the top right)")
     print()
 
 if __name__ == "__main__":
