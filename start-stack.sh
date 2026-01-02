@@ -213,6 +213,12 @@ echo ""
 echo -e "${YELLOW}Stopping existing containers (if any)...${NC}"
 docker compose down -v 2>/dev/null || true
 
+echo ""
+echo -e "${YELLOW}Note: Removing volumes to ensure clean OpenSearch initialization...${NC}"
+docker volume rm lynx_opensearch-data 2>/dev/null || true
+docker volume rm lynx_mongodb-data 2>/dev/null || true
+docker volume rm lynx_nodered-data 2>/dev/null || true
+
 # Pull latest images
 echo ""
 echo -e "${YELLOW}Pulling Docker images...${NC}"
