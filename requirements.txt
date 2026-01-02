@@ -1,3 +1,4 @@
 faker
 pymongo
 opensearch-py
+requests

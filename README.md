@@ -81,6 +81,17 @@ pip install -r requirements.txt
 python3 generate_idv_data.py --num-users 100
 ```
 
+### 4. Setup OpenSearch Dashboards
+
+```bash
+python3 setup_dashboards.py
+```
+
+This will create:
+- Index pattern for IDV data
+- 5 visualizations (status distribution, risk levels, timeline, document types, confidence scores)
+- A complete IDV Analytics Dashboard
+
 ## 🌐 Service Access
 
 Once the stack is running, services are available at:
@@ -88,8 +99,8 @@ Once the stack is running, services are available at:
 | Service | URL | Credentials |
 |---------|-----|-------------|
 | Node-RED | http://localhost:1880 | None (default) |
-| OpenSearch | https://localhost:9200 | admin / Admin123! |
-| OpenSearch Dashboards | http://localhost:5601 | admin / Admin123! |
+| OpenSearch | http://localhost:9200 | No authentication (dev mode) |
+| OpenSearch Dashboards | http://localhost:5601 | No authentication (dev mode) |
 | MongoDB | mongodb://localhost:27017 | admin / mongopass123 |
 
 ## 📊 Generated Data Structure
