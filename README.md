@@ -179,7 +179,19 @@ Once the stack is running, services are available at:
    - All investigation data saved to MongoDB
 5. **Navigate**: Drag to pan, scroll to zoom, click "Fit to Screen" to reset
 
-📖 **For detailed documentation on insurance integration and graph visualization, see [INSURANCE_AND_GRAPH_VISUALIZATION.md](INSURANCE_AND_GRAPH_VISUALIZATION.md)**
+## 🌐 Network Access
+
+The Web UI is accessible from any network interface:
+
+- **Local access**: http://localhost:5050
+- **Network access**: http://YOUR_SERVER_IP:5050
+
+To access from other machines:
+1. Find your server's IP: `hostname -I` or `ip addr`
+2. Open firewall port if needed: `sudo ufw allow 5050/tcp`
+3. Access from any browser: `http://YOUR_SERVER_IP:5050`
+
+For detailed firewall configuration and cloud deployment, see [UBUNTU_SETUP.md](UBUNTU_SETUP.md#firewall-configuration).
 
 ## 📊 Generated Data Structure
 

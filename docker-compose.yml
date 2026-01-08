@@ -101,7 +101,8 @@ services:
       timeout: 5s
       retries: 5
 
-  # Web UI Service
+  # Web UI Service (Graph Visualization)
+  # Accessible from any network interface on port 5050
   web-ui:
     build:
       context: ./web-ui
@@ -111,7 +112,7 @@ services:
       - MONGO_URI=mongodb://mongodb:27017/
       - POSTGRES_URI=postgresql://admin:postgrespass123@postgres:5432/insurance_db
     ports:
-      - "5050:5000"
+      - "0.0.0.0:5050:5000"  # Expose on all interfaces
     networks:
       - lynx-network
     depends_on:

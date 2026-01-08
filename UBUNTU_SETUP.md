@@ -124,12 +124,79 @@ curl http://localhost:5050
 
 ## Access the Application
 
+### From Local Machine
+
 Open your browser and navigate to:
 - **Graph Visualization**: http://localhost:5050
 
 Other services:
 - **OpenSearch Dashboards**: http://localhost:5601
 - **Node-RED**: http://localhost:1880
+
+### From Remote Machine
+
+The Web UI is exposed on all network interfaces and can be accessed from other machines:
+
+```bash
+# Find your server's IP address
+ip addr show | grep inet
+# or
+hostname -I
+```
+
+Then access from any machine on the network:
+- **Graph Visualization**: http://YOUR_SERVER_IP:5050
+- **OpenSearch Dashboards**: http://YOUR_SERVER_IP:5601
+- **Node-RED**: http://YOUR_SERVER_IP:1880
+
+**Example**: If your Ubuntu server IP is `192.168.1.100`, access the UI at:
+```
+http://192.168.1.100:5050
+```
+
+## Firewall Configuration
+
+If you need to access the UI from other machines, ensure your firewall allows the required ports:
+
+### Using UFW (Ubuntu Firewall)
+
+```bash
+# Allow Web UI port
+sudo ufw allow 5050/tcp
+
+# Optional: Allow other services
+sudo ufw allow 5601/tcp  # OpenSearch Dashboards
+sudo ufw allow 1880/tcp  # Node-RED
+
+# Check firewall status
+sudo ufw status
+```
+
+### Using firewalld (RHEL/CentOS)
+
+```bash
+# Allow Web UI port
+sudo firewall-cmd --permanent --add-port=5050/tcp
+sudo firewall-cmd --reload
+
+# Check status
+sudo firewall-cmd --list-ports
+```
+
+### Cloud Provider Security Groups
+
+If running on AWS, Azure, or GCP, you'll also need to:
+1. Open port 5050 in your cloud security group/firewall rules
+2. Ensure your VM's network interface is configured to allow inbound traffic
+
+### Test Network Connectivity
+
+```bash
+# From remote machine, test if port is accessible
+telnet YOUR_SERVER_IP 5050
+# or
+nc -zv YOUR_SERVER_IP 5050
+```
 
 ## Troubleshooting
 
