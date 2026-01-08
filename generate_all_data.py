@@ -86,11 +86,15 @@ def main():
             db.user_profiles.delete_many({})
             db.identity_verifications.delete_many({})
             db.verification_attempts.delete_many({})
+            db.login_sessions.delete_many({})
             
             # Insert new data
             db.user_profiles.insert_many(data['user_profiles'])
             db.identity_verifications.insert_many(data['verifications'])
             db.verification_attempts.insert_many(data['attempts'])
+            if data.get('login_sessions'):
+                db.login_sessions.insert_many(data['login_sessions'])
+                print(f"Inserted {len(data['login_sessions'])} login sessions into MongoDB")
             
             mongo_client.close()
             print("✓ IDV data ingested to MongoDB")
