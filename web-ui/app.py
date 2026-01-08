@@ -375,5 +375,157 @@ def list_investigations():
         }), 500
 
 
+@app.route('/api/fraud-patterns/ip-velocity')
+def get_ip_velocity_patterns():
+    """
+    Detect and return IP velocity patterns (multiple users from same IP).
+    Returns IPs with high user counts and the users associated with them.
+    """
+    try:
+        db = get_mongo_connection()
+        
+        # Aggregate to find IPs with multiple users
+        pipeline = [
+            {
+                '$group': {
+                    '_id': '$ipAddress',
+                    'users': {'$addToSet': '$userId'},
+                    'sessionCount': {'$sum': 1},
+                    'avgRiskScore': {'$avg': '$riskScore'},
+                    'isHighVelocityIP': {'$first': '$isHighVelocityIP'}
+                }
+            },
+            {
+                '$project': {
+                    'ipAddress': '$_id',
+                    'userCount': {'$size': '$users'},
+                    'users': 1,
+                    'sessionCount': 1,
+                    'avgRiskScore': 1,
+                    'isHighVelocityIP': 1
+                }
+            },
+            {
+                '$match': {
+                    'userCount': {'$gt': 1}  # Only IPs with multiple users
+                }
+            },
+            {
+                '$sort': {'userCount': -1}
+            },
+            {
+                '$limit': 100
+            }
+        ]
+        
+        results = list(db.login_sessions.aggregate(pipeline))
+        
+        return jsonify({
+            'patterns': results,
+            'totalHighVelocityIPs': len([r for r in results if r.get('isHighVelocityIP')])
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'error': str(e)
+        }), 500
+
+
+@app.route('/api/fraud-patterns/user/<user_id>/sessions')
+def get_user_sessions(user_id):
+    """Get all login sessions for a specific user."""
+    try:
+        db = get_mongo_connection()
+        
+        sessions = list(db.login_sessions.find({'userId': user_id}).sort('timestamp', -1))
+        
+        # Convert ObjectId to string
+        for session in sessions:
+            session['_id'] = str(session['_id'])
+        
+        # Calculate velocity score for user
+        unique_ips = len(set(s['ipAddress'] for s in sessions))
+        high_velocity_sessions = len([s for s in sessions if s.get('isHighVelocityIP')])
+        
+        return jsonify({
+            'userId': user_id,
+            'sessions': sessions,
+            'totalSessions': len(sessions),
+            'uniqueIPs': unique_ips,
+            'highVelocitySessions': high_velocity_sessions,
+            'velocityRatio': high_velocity_sessions / len(sessions) if sessions else 0
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'error': str(e)
+        }), 500
+
+
+@app.route('/api/fraud-patterns/users-by-filter')
+def get_users_by_filter():
+    """
+    Get users filtered by fraud patterns.
+    Filters: high_ip_velocity, suspicious_user_agent, high_risk
+    """
+    try:
+        filter_type = request.args.get('filter', 'all')
+        db = get_mongo_connection()
+        
+        if filter_type == 'high_ip_velocity':
+            # Find users with sessions on high velocity IPs
+            pipeline = [
+                {
+                    '$match': {
+                        'isHighVelocityIP': True
+                    }
+                },
+                {
+                    '$group': {
+                        '_id': '$userId',
+                        'highVelocityCount': {'$sum': 1},
+                        'totalSessions': {'$sum': 1}
+                    }
+                },
+                {
+                    '$match': {
+                        'highVelocityCount': {'$gte': 3}  # At least 3 high velocity sessions
+                    }
+                }
+            ]
+            user_ids = [doc['_id'] for doc in db.login_sessions.aggregate(pipeline)]
+            
+        elif filter_type == 'high_risk':
+            # Find users with high average risk scores
+            pipeline = [
+                {
+                    '$group': {
+                        '_id': '$userId',
+                        'avgRiskScore': {'$avg': '$riskScore'}
+                    }
+                },
+                {
+                    '$match': {
+                        'avgRiskScore': {'$gte': 0.7}
+                    }
+                }
+            ]
+            user_ids = [doc['_id'] for doc in db.login_sessions.aggregate(pipeline)]
+            
+        else:
+            user_ids = []
+        
+        return jsonify({
+            'filter': filter_type,
+            'userIds': user_ids,
+            'count': len(user_ids)
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'error': str(e)
+        }), 500
+
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)

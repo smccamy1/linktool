@@ -1,17 +1,17 @@
 # Lynx IDV Stack
 
-A containerized identity verification (IDV) data platform with OpenSearch, MongoDB, PostgreSQL, and Node-RED, featuring an interactive graph visualization UI with integrated insurance customer data and investigation tracking.
+A containerized identity verification (IDV) data platform with OpenSearch, MongoDB, PostgreSQL, and Node-RED, featuring an interactive graph visualization UI with integrated insurance customer data, investigation tracking, and **fraud pattern detection with IP velocity simulation**.
 
 ## 🏗️ Architecture
 
 The stack consists of six main services:
 
 - **OpenSearch** (with Dashboards): Search and analytics engine for IDV data
-- **MongoDB**: Primary database for storing identity verification records and investigations
+- **MongoDB**: Primary database for storing identity verification records, login sessions, and investigations
 - **PostgreSQL**: Relational database for insurance customer data (Aflac-modeled products)
 - **Node-RED**: Low-code platform for building data workflows and integrations
-- **Web UI**: Interactive graph visualization with integrated IDV and insurance data
-- **Data Generators**: Automated fake data generation for testing
+- **Web UI**: Interactive graph visualization with integrated IDV, insurance, and fraud detection
+- **Data Generators**: Automated fake data generation with IP velocity simulation
 
 ## ✨ Key Features
 
@@ -19,6 +19,11 @@ The stack consists of six main services:
 - 🏥 **Insurance Integration**: Aflac-modeled supplemental insurance products (17 product types)
 - 🔗 **Linked Data**: Insurance customers linked to IDV users via GUID with 100% data integrity
 - 🔎 **Investigation Tracking**: Right-click nodes to add them to investigations with connected entities
+- 🚨 **Fraud Pattern Detection**: IP velocity simulation and detection (NEW!)
+  - Simulates multi-user IP sharing patterns (bot farms, fraud rings)
+  - Login session tracking with risk scoring
+  - UI filters to highlight high-velocity users
+  - IP velocity report showing shared IPs
 - 📊 **Real-time Analytics**: Click nodes to view detailed IDV and insurance information
 - 🎨 **Beautiful UI**: Modern, responsive interface with status-based color coding
 - 🚀 **One-Command Setup**: Automated installation and data generation
@@ -256,11 +261,40 @@ Stored in MongoDB collection: `verification_attempts`
   "userAgent": "Mozilla/5.0...",
   "location": { "latitude": 40.7128, "longitude": -74.0060, "city": "New York", "country": "US" },
   "deviceFingerprint": "sha256hash",
-  "duration": 120
+  "duration": 120,
+  "isHighVelocityIP": false
 }
 ```
 
-## � Data Generation
+### Login Sessions (NEW! - Fraud Detection)
+Stored in MongoDB collection: `login_sessions`
+
+Each user has 5-30 login sessions tracked for IP velocity and fraud pattern detection:
+
+```json
+{
+  "sessionId": "uuid",
+  "userId": "uuid",
+  "timestamp": "2025-12-01T10:00:00",
+  "ipAddress": "22.175.57.209",
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+  "location": { "city": "New York", "country": "US", "latitude": 40.7128, "longitude": -74.0060 },
+  "deviceFingerprint": "sha256hash",
+  "sessionDuration": 3600,
+  "actionsPerformed": 25,
+  "isHighVelocityIP": true,
+  "riskScore": 0.75
+}
+```
+
+**IP Velocity Simulation:**
+- 30% of users exhibit high IP velocity patterns (multiple users sharing IPs)
+- 50 shared IPs in the pool, with 10 flagged as high-velocity
+- Simulates bot farms, fraud rings, and coordinated fraud attempts
+
+For detailed fraud detection documentation, see [IP_VELOCITY_FEATURES.md](IP_VELOCITY_FEATURES.md).
+
+## 🎲 Data Generation
 
 ### Generate Complete Dataset (Recommended)
 
@@ -414,7 +448,51 @@ docker compose restart mongodb
 docker compose ps
 ```
 
-## 🔒 Security Notes
+## � Fraud Detection Features
+
+The web UI includes advanced fraud pattern detection and visualization:
+
+### IP Velocity Detection
+
+Access the fraud filters in the top-right controls of the graph visualization:
+
+1. **Fraud Filter Dropdown**:
+   - **Show All**: Default view with all nodes
+   - **High IP Velocity**: Highlights users with 3+ sessions on high-velocity IPs (red nodes)
+   - **High Risk Score**: Highlights users with average risk score >= 0.7 (red nodes)
+
+2. **IP Velocity Report Button**:
+   - Opens detailed table showing IPs with multiple users
+   - Displays user count, session count, and average risk score
+   - High-velocity IPs highlighted in red
+   - Shows top 20 most suspicious IPs
+
+### Fraud Pattern APIs
+
+Query fraud patterns programmatically:
+
+```bash
+# Get IPs with multiple users (velocity patterns)
+curl http://localhost:5050/api/fraud-patterns/ip-velocity | python3 -m json.tool
+
+# Get users filtered by pattern type
+curl "http://localhost:5050/api/fraud-patterns/users-by-filter?filter=high_ip_velocity"
+
+# Get all sessions for a specific user
+curl "http://localhost:5050/api/fraud-patterns/user/USER_ID/sessions"
+```
+
+### Investigation Workflow
+
+1. Apply "High IP Velocity" filter to highlight suspicious users
+2. Click "IP Velocity Report" to see which IPs have the most users
+3. Click on flagged (red) user nodes to view their details
+4. Right-click suspicious nodes → "Add to Investigation"
+5. Add notes and document findings
+
+For comprehensive fraud detection documentation, see [IP_VELOCITY_FEATURES.md](IP_VELOCITY_FEATURES.md).
+
+## �🔒 Security Notes
 
 **⚠️ This setup is for development/testing only!**
 

@@ -59,6 +59,20 @@ class IDVDataGenerator:
         ]
         self.risk_levels = ['low', 'medium', 'high', 'critical']
         
+        # IP velocity simulation - create pool of shared IPs
+        self.shared_ip_pool = [self.faker.ipv4() for _ in range(50)]  # 50 shared IPs
+        self.high_velocity_ips = random.sample(self.shared_ip_pool, 10)  # 10 IPs will have high velocity
+        
+        # User agent pools for realistic patterns
+        self.user_agents = [
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
+            'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36',
+            'Mozilla/5.0 (iPhone; CPU iPhone OS 14_6 like Mac OS X) AppleWebKit/605.1.15',
+            'Mozilla/5.0 (iPad; CPU OS 14_6 like Mac OS X) AppleWebKit/605.1.15',
+            'Mozilla/5.0 (Android 11; Mobile) AppleWebKit/537.36',
+        ]
+        
     def generate_user_profile(self) -> Dict:
         """Generate a fake user profile."""
         user_id = str(uuid.uuid4())
@@ -80,15 +94,27 @@ class IDVDataGenerator:
             'lastUpdated': datetime.utcnow().isoformat()
         }
     
-    def generate_verification_attempt(self, verification_id: str, attempt_number: int) -> Dict:
+    def generate_verification_attempt(self, verification_id: str, attempt_number: int, use_shared_ip: bool = False) -> Dict:
         """Generate a verification attempt record."""
+        # Simulate IP velocity - 40% of attempts use shared IPs
+        if use_shared_ip or random.random() < 0.4:
+            ip_address = random.choice(self.shared_ip_pool)
+        else:
+            ip_address = self.faker.ipv4()
+        
+        # Mix of legitimate and bot-like user agents
+        if random.random() < 0.85:
+            user_agent = random.choice(self.user_agents)
+        else:
+            user_agent = self.faker.user_agent()  # Some suspicious patterns
+        
         return {
             'attemptId': str(uuid.uuid4()),
             'verificationId': verification_id,
             'attemptNumber': attempt_number,
             'timestamp': self.faker.date_time_between(start_date='-30d', end_date='now').isoformat(),
-            'ipAddress': self.faker.ipv4(),
-            'userAgent': self.faker.user_agent(),
+            'ipAddress': ip_address,
+            'userAgent': user_agent,
             'location': {
                 'latitude': float(self.faker.latitude()),
                 'longitude': float(self.faker.longitude()),
@@ -96,7 +122,8 @@ class IDVDataGenerator:
                 'country': self.faker.country_code()
             },
             'deviceFingerprint': self.faker.sha256(),
-            'duration': random.randint(30, 600)  # seconds
+            'duration': random.randint(30, 600),  # seconds
+            'isHighVelocityIP': ip_address in self.high_velocity_ips
         }
     
     def generate_identity_verification(self, user_id: str = None) -> Dict:
@@ -166,16 +193,70 @@ class IDVDataGenerator:
         
         return verification
     
+    def generate_login_sessions(self, user_id: str, num_sessions: int = None) -> List[Dict]:
+        """Generate login sessions for a user to track IP velocity."""
+        if num_sessions is None:
+            num_sessions = random.randint(5, 30)
+        
+        sessions = []
+        # Decide if this user exhibits high IP velocity (shared IP patterns)
+        uses_shared_ips = random.random() < 0.3  # 30% of users show velocity patterns
+        
+        for i in range(num_sessions):
+            # Generate session timestamp
+            session_time = self.faker.date_time_between(start_date='-90d', end_date='now')
+            
+            # IP address assignment
+            if uses_shared_ips:
+                # High velocity users share IPs, especially high velocity IPs
+                if random.random() < 0.6:
+                    ip_address = random.choice(self.high_velocity_ips)
+                else:
+                    ip_address = random.choice(self.shared_ip_pool)
+            else:
+                # Normal users might occasionally share IPs but mostly unique
+                if random.random() < 0.15:
+                    ip_address = random.choice(self.shared_ip_pool)
+                else:
+                    ip_address = self.faker.ipv4()
+            
+            session = {
+                'sessionId': str(uuid.uuid4()),
+                'userId': user_id,
+                'timestamp': session_time.isoformat(),
+                'ipAddress': ip_address,
+                'userAgent': random.choice(self.user_agents) if random.random() < 0.9 else self.faker.user_agent(),
+                'location': {
+                    'city': self.faker.city(),
+                    'country': self.faker.country_code(),
+                    'latitude': float(self.faker.latitude()),
+                    'longitude': float(self.faker.longitude())
+                },
+                'deviceFingerprint': self.faker.sha256(),
+                'sessionDuration': random.randint(60, 7200),  # 1 min to 2 hours
+                'actionsPerformed': random.randint(1, 50),
+                'isHighVelocityIP': ip_address in self.high_velocity_ips,
+                'riskScore': round(random.uniform(0.0, 1.0), 3)
+            }
+            sessions.append(session)
+        
+        return sessions
+    
     def generate_batch(self, count: int) -> Dict[str, List]:
         """Generate a batch of related IDV data."""
         user_profiles = []
         verifications = []
         attempts = []
+        login_sessions = []
         
         for _ in range(count):
             # Generate user profile
             user_profile = self.generate_user_profile()
             user_profiles.append(user_profile)
+            
+            # Generate login sessions for this user (5-30 sessions)
+            user_sessions = self.generate_login_sessions(user_profile['userId'])
+            login_sessions.extend(user_sessions)
             
             # Generate 1-3 verifications per user
             num_verifications = random.randint(1, 3)
@@ -195,7 +276,8 @@ class IDVDataGenerator:
         return {
             'user_profiles': user_profiles,
             'verifications': verifications,
-            'attempts': attempts
+            'attempts': attempts,
+            'login_sessions': login_sessions
         }
 
 
@@ -315,6 +397,10 @@ class DataIngestor:
         if data['attempts']:
             self.db.verification_attempts.insert_many(data['attempts'])
             print(f"Inserted {len(data['attempts'])} verification attempts into MongoDB")
+        
+        if data.get('login_sessions'):
+            self.db.login_sessions.insert_many(data['login_sessions'])
+            print(f"Inserted {len(data['login_sessions'])} login sessions into MongoDB")
     
     def close(self):
         """Close database connections."""

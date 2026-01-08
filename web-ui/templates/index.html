@@ -521,6 +521,14 @@
                 <div class="controls">
                     <button onclick="fitNetwork()">Fit to Screen</button>
                     <button onclick="resetZoom()">Reset Zoom</button>
+                    <br><br>
+                    <label style="font-size: 12px; color: #333; display: block; margin-bottom: 5px;">Fraud Filters:</label>
+                    <select id="fraudFilter" onchange="applyFraudFilter()" style="width: 100%; padding: 5px; margin-bottom: 5px; border-radius: 5px; border: 1px solid #ddd;">
+                        <option value="none">Show All</option>
+                        <option value="high_ip_velocity">High IP Velocity</option>
+                        <option value="high_risk">High Risk Score</option>
+                    </select>
+                    <button onclick="showIPVelocityReport()">IP Velocity Report</button>
                 </div>
 
                 <div class="legend">
@@ -1132,6 +1140,121 @@
         function resetZoom() {
             if (network) {
                 network.moveTo({ scale: 1.0 });
+            }
+        }
+
+        // Fraud filter functions
+        let originalNodeColors = {};
+        let currentFilter = 'none';
+
+        async function applyFraudFilter() {
+            const filterSelect = document.getElementById('fraudFilter');
+            const filterValue = filterSelect.value;
+            currentFilter = filterValue;
+            
+            if (filterValue === 'none') {
+                // Restore original colors
+                nodes.forEach(node => {
+                    if (originalNodeColors[node.id]) {
+                        nodes.update({
+                            id: node.id,
+                            color: originalNodeColors[node.id]
+                        });
+                    }
+                });
+                return;
+            }
+            
+            try {
+                // Get filtered users
+                const response = await fetch(`/api/fraud-patterns/users-by-filter?filter=${filterValue}`);
+                const data = await response.json();
+                
+                // Save original colors if not saved
+                if (Object.keys(originalNodeColors).length === 0) {
+                    nodes.forEach(node => {
+                        originalNodeColors[node.id] = node.color;
+                    });
+                }
+                
+                // Highlight filtered users
+                nodes.forEach(node => {
+                    if (node.type === 'user') {
+                        if (data.userIds.includes(node.id)) {
+                            // Highlight in red/orange for fraud patterns
+                            nodes.update({
+                                id: node.id,
+                                color: '#ff4444',
+                                size: 30
+                            });
+                        } else {
+                            // Dim other nodes
+                            nodes.update({
+                                id: node.id,
+                                color: '#cccccc',
+                                size: 25
+                            });
+                        }
+                    }
+                });
+                
+                console.log(`Applied ${filterValue} filter: ${data.userIds.length} users highlighted`);
+                
+            } catch (error) {
+                console.error('Error applying fraud filter:', error);
+                alert('Error applying filter. Please try again.');
+            }
+        }
+
+        async function showIPVelocityReport() {
+            try {
+                const response = await fetch('/api/fraud-patterns/ip-velocity');
+                const data = await response.json();
+                
+                // Create report modal
+                let reportHTML = '<div style="max-height: 500px; overflow-y: auto;">';
+                reportHTML += '<h3>IP Velocity Report</h3>';
+                reportHTML += `<p>Total IPs with multiple users: ${data.patterns.length}</p>`;
+                reportHTML += `<p>High velocity IPs: ${data.totalHighVelocityIPs}</p><br>`;
+                
+                reportHTML += '<table style="width: 100%; border-collapse: collapse;">';
+                reportHTML += '<tr style="background: #f0f0f0; font-weight: bold;"><th style="padding: 8px; border: 1px solid #ddd;">IP Address</th><th style="padding: 8px; border: 1px solid #ddd;">Users</th><th style="padding: 8px; border: 1px solid #ddd;">Sessions</th><th style="padding: 8px; border: 1px solid #ddd;">Avg Risk</th></tr>';
+                
+                data.patterns.slice(0, 20).forEach(pattern => {
+                    const rowStyle = pattern.isHighVelocityIP ? 'background: #ffcccc;' : '';
+                    reportHTML += `<tr style="${rowStyle}">
+                        <td style="padding: 8px; border: 1px solid #ddd;">${pattern.ipAddress}</td>
+                        <td style="padding: 8px; border: 1px solid #ddd;">${pattern.userCount}</td>
+                        <td style="padding: 8px; border: 1px solid #ddd;">${pattern.sessionCount}</td>
+                        <td style="padding: 8px; border: 1px solid #ddd;">${pattern.avgRiskScore ? pattern.avgRiskScore.toFixed(3) : 'N/A'}</td>
+                    </tr>`;
+                });
+                
+                reportHTML += '</table></div>';
+                
+                // Show in modal
+                const modalHtml = `
+                    <div class="modal-overlay active" id="reportModal" onclick="closeReportModal()">
+                        <div class="modal-content" onclick="event.stopPropagation()">
+                            ${reportHTML}
+                            <br>
+                            <button onclick="closeReportModal()" class="btn btn-secondary">Close</button>
+                        </div>
+                    </div>
+                `;
+                
+                document.body.insertAdjacentHTML('beforeend', modalHtml);
+                
+            } catch (error) {
+                console.error('Error loading IP velocity report:', error);
+                alert('Error loading report. Please try again.');
+            }
+        }
+
+        function closeReportModal() {
+            const modal = document.getElementById('reportModal');
+            if (modal) {
+                modal.remove();
             }
         }
 
