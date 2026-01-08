@@ -846,7 +846,7 @@
                                     <p>Active Policies</p>
                                 </div>
                                 <div class="summary-card">
-                                    <h4>$${summary.totalMonthlyPremium.toFixed(2)}</h4>
+                                    <h4>$${parseFloat(summary.totalMonthlyPremium).toFixed(2)}</h4>
                                     <p>Monthly Premium</p>
                                 </div>
                                 <div class="summary-card">
@@ -854,7 +854,7 @@
                                     <p>Total Claims</p>
                                 </div>
                                 <div class="summary-card">
-                                    <h4>${summary.claimApprovalRate.toFixed(1)}%</h4>
+                                    <h4>${parseFloat(summary.claimApprovalRate).toFixed(1)}%</h4>
                                     <p>Approval Rate</p>
                                 </div>
                             </div>
@@ -890,8 +890,8 @@
                                 <div class="claim-card">
                                     <h4>${claim.product_name} - Claim #${claim.claim_number}</h4>
                                     <p><strong>Type:</strong> ${claim.claim_type}</p>
-                                    <p><strong>Amount:</strong> $${claim.claim_amount.toFixed(2)}</p>
-                                    ${claim.approved_amount ? `<p><strong>Approved:</strong> $${claim.approved_amount.toFixed(2)}</p>` : ''}
+                                    <p><strong>Amount:</strong> $${parseFloat(claim.claim_amount).toFixed(2)}</p>
+                                    ${claim.approved_amount ? `<p><strong>Approved:</strong> $${parseFloat(claim.approved_amount).toFixed(2)}</p>` : ''}
                                     <p><strong>Date:</strong> ${new Date(claim.claim_date).toLocaleDateString()}</p>
                                     <p><strong>Status:</strong> <span class="status-badge status-${claim.status}">${claim.status}</span></p>
                                 </div>
