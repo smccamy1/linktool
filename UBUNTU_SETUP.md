@@ -196,7 +196,26 @@ If running on AWS, Azure, or GCP, you'll also need to:
 telnet YOUR_SERVER_IP 5050
 # or
 nc -zv YOUR_SERVER_IP 5050
+# or
+curl -v http://YOUR_SERVER_IP:5050
 ```
+
+### Run Network Diagnostic Script
+
+A comprehensive diagnostic script is included to check all network configurations:
+
+```bash
+./check_network_access.sh
+```
+
+This will check:
+- Docker and container status
+- Flask binding configuration
+- Port binding on host (all interfaces vs localhost)
+- Local and IP-based access
+- Firewall rules (UFW, firewalld, iptables)
+- Docker NAT rules
+- Server IP addresses
 
 ## Troubleshooting
 
@@ -255,6 +274,85 @@ docker compose logs
 docker compose logs web-ui
 docker compose logs mongodb
 docker compose logs postgres
+```
+
+### Can Access Locally but Not Remotely
+
+This is a common issue. Check these in order:
+
+**1. Verify port binding:**
+```bash
+# Check what's listening on port 5050
+sudo ss -tlnp | grep 5050
+# or
+sudo netstat -tlnp | grep 5050
+```
+
+You should see `0.0.0.0:5050` or `*:5050`. If you see `127.0.0.1:5050`, Docker is not exposing correctly.
+
+**2. Restart Docker networking:**
+```bash
+# Stop containers
+docker compose down
+
+# Verify port is released
+sudo ss -tlnp | grep 5050  # Should return nothing
+
+# Start containers
+docker compose up -d
+
+# Wait 30 seconds for services to start
+sleep 30
+
+# Check again
+sudo ss -tlnp | grep 5050
+```
+
+**3. Check Docker iptables rules:**
+```bash
+# View Docker NAT rules
+sudo iptables -t nat -L DOCKER -n | grep 5050
+```
+
+You should see a DNAT rule forwarding to the container.
+
+**4. Test from server itself using server IP (not localhost):**
+```bash
+# Get your server IP
+SERVER_IP=$(hostname -I | awk '{print $1}')
+
+# Test access via IP
+curl -v http://$SERVER_IP:5050
+
+# If this fails but localhost works, it's a Docker or firewall issue
+```
+
+**5. Check if UFW is blocking Docker:**
+
+UFW can sometimes block Docker ports even with rules. Try:
+
+```bash
+# Option A: Disable UFW temporarily to test
+sudo ufw disable
+curl http://YOUR_SERVER_IP:5050
+sudo ufw enable
+
+# Option B: Configure UFW to work with Docker
+sudo ufw allow from any to any port 5050 proto tcp
+```
+
+**6. Cloud provider security groups:**
+
+If on AWS, Azure, GCP, etc.:
+- Open port 5050 in security group/firewall
+- Verify VM has public IP
+- Check network ACLs
+- Try accessing via private IP first from another VM in same network
+
+**7. Check for conflicting services:**
+```bash
+# See what else might be using port 5050
+sudo lsof -i :5050
 ```
 
 ### Python Virtual Environment Issues
