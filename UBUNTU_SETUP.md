@@ -375,13 +375,23 @@ deactivate
 
 **Verify linkage:**
 ```bash
-# Check MongoDB has users
+# Use the verification script
+./verify_data_linkage.sh
+
+# Or manually check if counts match:
 docker exec lynx-mongodb mongosh idv_data --quiet --eval "db.user_profiles.countDocuments({})"
-
-# Check PostgreSQL has matching customers
 docker exec lynx-postgres psql -U admin -d insurance_db -c "SELECT COUNT(*) FROM customers;"
+```
 
-# The counts should match (both should be 50 if you generated 50 users)
+**If data is linked but UI still shows no insurance data:**
+```bash
+# 1. Restart the web UI container
+docker restart lynx-web-ui
+
+# 2. Hard refresh your browser (Ctrl+Shift+R or Cmd+Shift+R)
+
+# 3. Check web UI logs for errors
+docker logs lynx-web-ui --tail 50
 ```
 
 ### Python Virtual Environment Issues
