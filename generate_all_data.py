@@ -118,6 +118,14 @@ def main():
         print("Connecting to databases...")
         insurance_ingestor = InsuranceIngestor(args.mongo_uri, args.postgres_uri)
         
+        # Clear existing insurance data
+        print("Clearing existing insurance data from PostgreSQL...")
+        cursor = insurance_ingestor.postgres_conn.cursor()
+        cursor.execute("TRUNCATE TABLE payments, dependents, claims, policies, customers RESTART IDENTITY CASCADE")
+        insurance_ingestor.postgres_conn.commit()
+        cursor.close()
+        print("✓ PostgreSQL cleared")
+        
         print(f"Generating insurance data for all {args.num_users} IDV users...")
         insurance_ingestor.generate_and_insert_all(max_customers=None)
         
