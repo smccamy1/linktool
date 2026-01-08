@@ -14,7 +14,7 @@ NC='\033[0m' # No Color
 
 # Configuration
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-NUM_USERS=100
+NUM_USERS=50
 SKIP_DATA_GENERATION=false
 
 # Parse command line arguments
@@ -32,7 +32,7 @@ while [[ $# -gt 0 ]]; do
             echo "Usage: $0 [OPTIONS]"
             echo ""
             echo "Options:"
-            echo "  -n, --num-users NUM    Number of fake users to generate (default: 100)"
+            echo "  -n, --num-users NUM    Number of fake users to generate (default: 50)"
             echo "  --skip-data           Skip data generation"
             echo "  -h, --help            Show this help message"
             exit 0
@@ -214,10 +214,11 @@ echo -e "${YELLOW}Stopping existing containers (if any)...${NC}"
 docker compose down -v 2>/dev/null || true
 
 echo ""
-echo -e "${YELLOW}Note: Removing volumes to ensure clean OpenSearch initialization...${NC}"
+echo -e "${YELLOW}Note: Removing volumes to ensure clean initialization...${NC}"
 docker volume rm lynx_opensearch-data 2>/dev/null || true
 docker volume rm lynx_mongodb-data 2>/dev/null || true
 docker volume rm lynx_nodered-data 2>/dev/null || true
+docker volume rm lynx_postgres-data 2>/dev/null || true
 
 # Pull latest images
 echo ""
@@ -241,13 +242,14 @@ SLEEP_INTERVAL=10
 while [ $ELAPSED -lt $MAX_WAIT ]; do
     MONGODB_HEALTHY=$(docker inspect --format='{{.State.Health.Status}}' lynx-mongodb 2>/dev/null || echo "starting")
     OPENSEARCH_HEALTHY=$(docker inspect --format='{{.State.Health.Status}}' lynx-opensearch 2>/dev/null || echo "starting")
+    POSTGRES_HEALTHY=$(docker inspect --format='{{.State.Health.Status}}' lynx-postgres 2>/dev/null || echo "starting")
     
-    if [ "$MONGODB_HEALTHY" == "healthy" ] && [ "$OPENSEARCH_HEALTHY" == "healthy" ]; then
+    if [ "$MONGODB_HEALTHY" == "healthy" ] && [ "$OPENSEARCH_HEALTHY" == "healthy" ] && [ "$POSTGRES_HEALTHY" == "healthy" ]; then
         echo -e "${GREEN}✓ All services are healthy!${NC}"
         break
     fi
     
-    echo "  MongoDB: $MONGODB_HEALTHY | OpenSearch: $OPENSEARCH_HEALTHY"
+    echo "  MongoDB: $MONGODB_HEALTHY | OpenSearch: $OPENSEARCH_HEALTHY | PostgreSQL: $POSTGRES_HEALTHY"
     sleep $SLEEP_INTERVAL
     ELAPSED=$((ELAPSED + SLEEP_INTERVAL))
 done
@@ -325,8 +327,12 @@ if [ "$SKIP_DATA_GENERATION" = false ] && [ "$OPENSEARCH_READY" = true ]; then
     echo -e "${GREEN}✓ Python dependencies installed${NC}"
     
     echo ""
-    echo -e "${YELLOW}Generating IDV data ($NUM_USERS users)...${NC}"
-    python generate_idv_data.py --num-users $NUM_USERS
+    echo -e "${YELLOW}Generating complete dataset with IDV and insurance data ($NUM_USERS users)...${NC}"
+    python generate_all_data.py --num-users $NUM_USERS --skip-opensearch
+    
+    echo ""
+    echo -e "${YELLOW}Setting up OpenSearch dashboards...${NC}"
+    python setup_dashboards.py
     
     deactivate
     
@@ -344,14 +350,23 @@ echo -e "${GREEN}========================================${NC}"
 echo ""
 echo "Services are accessible at:"
 echo ""
+echo -e "  ${GREEN}Web UI (Graph Viz):${NC}    http://localhost:5050"
 echo -e "  ${GREEN}Node-RED:${NC}              http://localhost:1880"
 echo -e "  ${GREEN}OpenSearch:${NC}            http://localhost:9200"
 echo -e "  ${GREEN}OpenSearch Dashboards:${NC} http://localhost:5601"
 echo -e "  ${GREEN}MongoDB:${NC}               mongodb://localhost:27017"
+echo -e "  ${GREEN}PostgreSQL:${NC}            postgresql://localhost:5432/insurance_db"
 echo ""
 echo "Credentials:"
 echo -e "  ${YELLOW}OpenSearch:${NC}  No authentication (security disabled for development)"
 echo -e "  ${YELLOW}MongoDB:${NC}     admin / mongopass123"
+echo -e "  ${YELLOW}PostgreSQL:${NC}  admin / postgrespass123"
+echo ""
+echo -e "${GREEN}Quick Start:${NC}"
+echo "  1. Open the Graph Visualization UI: ${GREEN}http://localhost:5050${NC}"
+echo "  2. Left-click any user node to view IDV and insurance data"
+echo "  3. Right-click any node to add it to an investigation"
+echo "  4. Explore the graph to see relationships between users, verifications, and attempts"
 echo ""
 echo "To view logs:"
 echo "  docker compose logs -f"

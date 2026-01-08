@@ -1,48 +1,98 @@
 # Lynx IDV Stack
 
-A containerized identity verification (IDV) data platform with OpenSearch, MongoDB, and Node-RED, including automated fake data generation for testing and development.
+A containerized identity verification (IDV) data platform with OpenSearch, MongoDB, PostgreSQL, and Node-RED, featuring an interactive graph visualization UI with integrated insurance customer data and investigation tracking.
 
 ## 🏗️ Architecture
 
-The stack consists of three main services:
+The stack consists of six main services:
 
 - **OpenSearch** (with Dashboards): Search and analytics engine for IDV data
-- **MongoDB**: Primary database for storing identity verification records
+- **MongoDB**: Primary database for storing identity verification records and investigations
+- **PostgreSQL**: Relational database for insurance customer data (Aflac-modeled products)
 - **Node-RED**: Low-code platform for building data workflows and integrations
+- **Web UI**: Interactive graph visualization with integrated IDV and insurance data
+- **Data Generators**: Automated fake data generation for testing
+
+## ✨ Key Features
+
+- 🔍 **Interactive Graph Visualization**: Explore IDV data as nodes and edges with drag-and-drop
+- 🏥 **Insurance Integration**: Aflac-modeled supplemental insurance products (17 product types)
+- 🔗 **Linked Data**: Insurance customers linked to IDV users via GUID with 100% data integrity
+- 🔎 **Investigation Tracking**: Right-click nodes to add them to investigations with connected entities
+- 📊 **Real-time Analytics**: Click nodes to view detailed IDV and insurance information
+- 🎨 **Beautiful UI**: Modern, responsive interface with status-based color coding
+- 🚀 **One-Command Setup**: Automated installation and data generation
 
 ## 📋 Prerequisites
 
-### For Ubuntu/Debian
+### Ubuntu 20.04+ / Debian 11+
 
 The setup script will automatically install the following if not present:
-- Docker Engine
-- Docker Compose (plugin)
-- Python 3
-- pip
+- Docker Engine (latest)
+- Docker Compose V2 (plugin)
+- Python 3.8+
+- pip and Python virtual environment tools
 
-### For Other Operating Systems
+### macOS
 
 Please install manually:
-- [Docker Desktop](https://www.docker.com/products/docker-desktop)
+- [Docker Desktop for Mac](https://docs.docker.com/desktop/install/mac-install/) (Intel or Apple Silicon)
+- Python 3.8+ (included with macOS or via Homebrew: `brew install python3`)
+
+### Windows
+
+Please install manually:
+- [Docker Desktop for Windows](https://docs.docker.com/desktop/install/windows-install/) (with WSL2)
 - [Python 3.8+](https://www.python.org/downloads/)
 
 ## 🚀 Quick Start
 
-### On Ubuntu
+### Ubuntu / Debian
 
-1. Clone or download this repository
-2. Run the setup script:
-
+1. Clone the repository:
 ```bash
+git clone <repository-url>
+cd Lynx
+```
+
+2. Make setup script executable and run:
+```bash
+chmod +x start-stack.sh
 ./start-stack.sh
 ```
 
 The script will:
 - Check for and install required dependencies (Docker, Python)
-- Start all containerized services
+- Start all containerized services (MongoDB, OpenSearch, PostgreSQL, Web UI, Node-RED)
 - Wait for services to be healthy
-- Generate fake IDV data (100 users by default)
+- Generate fake IDV data (50 users by default)
+- Generate fake insurance data linked to IDV users
+- Set up OpenSearch dashboards
 - Display access information
+
+**Once complete, open http://localhost:5050 to see the graph visualization!**
+
+### macOS / Windows
+
+1. Ensure Docker Desktop is running
+2. Install Python dependencies:
+```bash
+python3 -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+pip install -r requirements.txt
+```
+
+3. Start the stack:
+```bash
+docker compose up -d
+```
+
+4. Generate data:
+```bash
+python3 generate_all_data.py --num-users 50
+```
+
+**Access the UI at http://localhost:5050**
 
 ### Custom Options
 
@@ -50,7 +100,7 @@ The script will:
 # Generate more fake users
 ./start-stack.sh --num-users 500
 
-# Skip data generation
+# Skip OpenSearch and data generation
 ./start-stack.sh --skip-data
 
 # Help
@@ -78,10 +128,12 @@ pip install -r requirements.txt
 ### 3. Generate Fake Data
 
 ```bash
-python3 generate_idv_data.py --num-users 100
+python3 generate_all_data.py --num-users 50
 ```
 
-### 4. Setup OpenSearch Dashboards
+This generates both IDV data (users, verifications, attempts) and linked insurance data (customers, policies, claims) in one command.
+
+### 4. Setup OpenSearch Dashboards (Optional)
 
 ```bash
 python3 setup_dashboards.py
@@ -98,10 +150,34 @@ Once the stack is running, services are available at:
 
 | Service | URL | Credentials |
 |---------|-----|-------------|
+| **Graph Visualization UI** | http://localhost:5050 | None |
 | Node-RED | http://localhost:1880 | None (default) |
 | OpenSearch | http://localhost:9200 | No authentication (dev mode) |
 | OpenSearch Dashboards | http://localhost:5601 | No authentication (dev mode) |
 | MongoDB | mongodb://localhost:27017 | admin / mongopass123 |
+| PostgreSQL | postgresql://localhost:5432/insurance_db | admin / postgrespass123 |
+
+## 🎯 Graph Visualization Quick Guide
+
+1. **Open the UI**: Navigate to http://localhost:5050
+2. **Explore the Graph**: 
+   - Blue circles = IDV Users
+   - Colored diamonds = Verifications (green=approved, red=rejected, yellow=pending, orange=review)
+   - Gray squares = Verification attempts
+3. **View Details**: Left-click any user node to see:
+   - IDV profile information
+   - Insurance policies and coverage
+   - Claims history
+   - Payment records
+   - Dependents
+4. **Add to Investigation**: Right-click any node to:
+   - Add node to investigation
+   - Select connected nodes to include
+   - Create investigation with name and description
+   - All investigation data saved to MongoDB
+5. **Navigate**: Drag to pan, scroll to zoom, click "Fit to Screen" to reset
+
+📖 **For detailed documentation on insurance integration and graph visualization, see [INSURANCE_AND_GRAPH_VISUALIZATION.md](INSURANCE_AND_GRAPH_VISUALIZATION.md)**
 
 ## 📊 Generated Data Structure
 
@@ -167,7 +243,60 @@ Stored in MongoDB collection: `verification_attempts`
 }
 ```
 
-## 🔍 Using the Data
+## � Data Generation
+
+### Generate Complete Dataset (Recommended)
+
+The easiest way to generate a complete, linked dataset with both IDV and insurance data:
+
+```bash
+# Generate 50 users with full IDV and insurance data
+python3 generate_all_data.py --num-users 50 --skip-opensearch
+
+# With OpenSearch ingestion
+python3 generate_all_data.py --num-users 50
+```
+
+This single command will:
+1. Generate IDV user profiles with verifications and attempts
+2. Insert data into MongoDB
+3. Automatically create linked insurance records for every user
+4. Generate policies, claims, payments, and dependents
+5. Insert all insurance data into PostgreSQL
+
+**Every IDV user will have corresponding insurance data!**
+
+### Generate IDV Data Only
+
+```bash
+# Generate 100 users with verifications and attempts
+python3 generate_idv_data.py --num-users 100
+
+# With custom MongoDB URI
+python3 generate_idv_data.py --num-users 50 --mongo-uri "mongodb://localhost:27017/"
+```
+
+### Generate Insurance Data Only
+
+```bash
+# Generate insurance data for existing IDV users
+python3 generate_insurance_data.py
+
+# Limit to first 50 users
+python3 generate_insurance_data.py --max-customers 50
+```
+
+### Clear All Data
+
+```bash
+# Clear MongoDB
+docker exec lynx-mongodb mongosh idv_data --eval "db.user_profiles.deleteMany({}); db.identity_verifications.deleteMany({}); db.verification_attempts.deleteMany({});"
+
+# Clear PostgreSQL
+docker exec lynx-postgres psql -U admin -d insurance_db -c "TRUNCATE TABLE payments, claims, dependents, policies, customers RESTART IDENTITY CASCADE;"
+```
+
+## �🔍 Using the Data
 
 ### Query MongoDB
 

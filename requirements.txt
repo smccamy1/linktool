@@ -2,3 +2,6 @@ faker
 pymongo
 opensearch-py
 requests
+psycopg2-binary
+flask
+flask-cors
