@@ -241,17 +241,14 @@ class IDVDataGenerator:
             
             # IP address assignment
             if uses_high_velocity:
-                # High velocity users: 70% use their assigned high-velocity IP, 30% use others
+                # High velocity users: 70% use their assigned high-velocity IP, 30% use unique IPs
                 if random.random() < 0.7:
                     ip_address = primary_ip
                 else:
-                    ip_address = random.choice(self.shared_ip_pool)
-            else:
-                # Normal users: mostly unique IPs, occasionally shared
-                if random.random() < 0.15:
-                    ip_address = random.choice(self.shared_ip_pool)
-                else:
                     ip_address = self.faker.ipv4()
+            else:
+                # Normal users: always use unique IPs
+                ip_address = self.faker.ipv4()
             
             session = {
                 'sessionId': str(uuid.uuid4()),
