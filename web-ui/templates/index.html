@@ -1040,14 +1040,65 @@
             const node = nodes.get(selectedNodeForInvestigation);
             const connected = network.getConnectedNodes(selectedNodeForInvestigation);
             
-            // Store connected nodes data
-            connectedNodesForInvestigation = connected.map(id => nodes.get(id));
+            // Get all user nodes that are associated
+            let associatedUsers = new Set();
+            
+            // If the clicked node is a user, add it
+            if (node.type === 'user') {
+                associatedUsers.add(node.id);
+            }
+            
+            // Find all connected users (traverse the graph to find all users connected through any path)
+            function findConnectedUsers(nodeId, visited = new Set()) {
+                if (visited.has(nodeId)) return;
+                visited.add(nodeId);
+                
+                const currentNode = nodes.get(nodeId);
+                if (currentNode && currentNode.type === 'user') {
+                    associatedUsers.add(nodeId);
+                }
+                
+                const connectedNodes = network.getConnectedNodes(nodeId);
+                connectedNodes.forEach(connId => {
+                    if (!visited.has(connId)) {
+                        findConnectedUsers(connId, visited);
+                    }
+                });
+            }
+            
+            // Start traversal from the selected node
+            findConnectedUsers(selectedNodeForInvestigation);
+            
+            // Also check if there are IP nodes visible and find all users connected to same IPs
+            if (ipNodesAdded.length > 0) {
+                ipNodesAdded.forEach(ipNodeId => {
+                    const ipNode = nodes.get(ipNodeId);
+                    if (ipNode) {
+                        const usersOnThisIP = network.getConnectedNodes(ipNodeId);
+                        usersOnThisIP.forEach(userId => {
+                            const userNode = nodes.get(userId);
+                            if (userNode && userNode.type === 'user') {
+                                associatedUsers.add(userId);
+                            }
+                        });
+                    }
+                });
+            }
+            
+            // Get all other connected nodes (non-users)
+            const allConnected = connected.map(id => nodes.get(id)).filter(n => n.type !== 'user');
+            
+            // Convert associated users set to array of node objects
+            const userNodes = Array.from(associatedUsers).map(id => nodes.get(id)).filter(n => n);
+            
+            // Store for later use
+            connectedNodesForInvestigation = [...userNodes, ...allConnected];
             
             // Populate modal with selected node
             const selectedContainer = document.getElementById('selected-node-container');
             selectedContainer.innerHTML = createNodeCheckbox(node, true, true);
             
-            // Populate modal with connected nodes
+            // Populate modal with all associated users and connected nodes
             const connectedContainer = document.getElementById('connected-nodes-container');
             if (connectedNodesForInvestigation.length > 0) {
                 connectedContainer.innerHTML = connectedNodesForInvestigation

@@ -74,7 +74,12 @@ class IDVDataGenerator:
         
         # IP velocity simulation - create pool of shared IPs
         self.shared_ip_pool = [self.faker.ipv4() for _ in range(50)]  # 50 shared IPs
-        self.high_velocity_ips = random.sample(self.shared_ip_pool, 10)  # 10 IPs will have high velocity
+        # Create 2 specific high-velocity IPs (will be assigned to specific user groups)
+        self.high_velocity_ip_1 = self.faker.ipv4()  # 6 users will share this
+        self.high_velocity_ip_2 = self.faker.ipv4()  # 10 users will share this
+        self.high_velocity_ips = [self.high_velocity_ip_1, self.high_velocity_ip_2]
+        self.high_velocity_ip_1_users = []  # Track users on IP 1
+        self.high_velocity_ip_2_users = []  # Track users on IP 2
         
         # User agent pools for realistic patterns
         self.user_agents = [
@@ -211,22 +216,38 @@ class IDVDataGenerator:
             num_sessions = random.randint(5, 30)
         
         sessions = []
-        # Decide if this user exhibits high IP velocity (shared IP patterns)
-        uses_shared_ips = random.random() < 0.2  # 20% of users show velocity patterns
+        
+        # Determine if this user should be in a high velocity IP group
+        is_high_velocity_group_1 = len(self.high_velocity_ip_1_users) < 6
+        is_high_velocity_group_2 = len(self.high_velocity_ip_2_users) < 10
+        
+        # Assign to high velocity groups if slots available
+        if is_high_velocity_group_1:
+            self.high_velocity_ip_1_users.append(user_id)
+            primary_ip = self.high_velocity_ip_1
+            uses_high_velocity = True
+        elif is_high_velocity_group_2:
+            self.high_velocity_ip_2_users.append(user_id)
+            primary_ip = self.high_velocity_ip_2
+            uses_high_velocity = True
+        else:
+            # Normal user - mostly unique IPs
+            primary_ip = None
+            uses_high_velocity = False
         
         for i in range(num_sessions):
             # Generate session timestamp
             session_time = self.faker.date_time_between(start_date='-90d', end_date='now')
             
             # IP address assignment
-            if uses_shared_ips:
-                # High velocity users share IPs, especially high velocity IPs
-                if random.random() < 0.6:
-                    ip_address = random.choice(self.high_velocity_ips)
+            if uses_high_velocity:
+                # High velocity users: 70% use their assigned high-velocity IP, 30% use others
+                if random.random() < 0.7:
+                    ip_address = primary_ip
                 else:
                     ip_address = random.choice(self.shared_ip_pool)
             else:
-                # Normal users might occasionally share IPs but mostly unique
+                # Normal users: mostly unique IPs, occasionally shared
                 if random.random() < 0.15:
                     ip_address = random.choice(self.shared_ip_pool)
                 else:
