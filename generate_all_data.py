@@ -102,7 +102,7 @@ def main():
                 args.opensearch_user,
                 args.opensearch_password
             )
-            idv_ingestor.ingest_batch(data)
+            idv_ingestor.ingest_data(data)
             print("✓ IDV data ingested to MongoDB and OpenSearch")
         
     except Exception as e:
