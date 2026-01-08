@@ -91,8 +91,11 @@ docker compose up -d
 
 4. Generate data:
 ```bash
+# IMPORTANT: Always use generate_all_data.py for proper data linkage
 python3 generate_all_data.py --num-users 50
 ```
+
+**⚠️ Note:** Do not run `generate_idv_data.py` and `generate_insurance_data.py` separately, as this will cause insurance data to not link properly to IDV users.
 
 **Access the UI at http://localhost:5050**
 
@@ -456,6 +459,26 @@ docker exec -it lynx-mongodb mongosh -u admin -p mongopass123 --eval "db.adminCo
 
 # Test OpenSearch
 curl -k -u admin:Admin123! https://localhost:9200
+```
+
+### Insurance data not showing when clicking nodes
+
+This means the data wasn't generated with proper linkage. Fix it:
+
+```bash
+# Clear and regenerate all data with proper linkage
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+python3 generate_all_data.py --num-users 50
+deactivate
+```
+
+Verify the fix by checking if user counts match:
+```bash
+# MongoDB user count
+docker exec lynx-mongodb mongosh idv_data --quiet --eval "db.user_profiles.countDocuments({})"
+
+# PostgreSQL customer count (should match MongoDB)
+docker exec lynx-postgres psql -U admin -d insurance_db -c "SELECT COUNT(*) FROM customers;"
 ```
 
 ## 📦 Volumes

@@ -93,6 +93,7 @@ source venv/bin/activate
 pip install -r requirements.txt
 
 # Generate fake data (50 users, 134 policies, 88 claims)
+# IMPORTANT: Use generate_all_data.py to ensure proper data linkage
 python3 generate_all_data.py --num-users 50
 
 # Optional: Set up OpenSearch dashboards
@@ -353,6 +354,34 @@ If on AWS, Azure, GCP, etc.:
 ```bash
 # See what else might be using port 5050
 sudo lsof -i :5050
+```
+
+### Insurance Data Not Showing When Clicking Nodes
+
+If you click user nodes and see "No insurance information found", the data wasn't generated with proper linkage.
+
+**Cause:** Running `generate_idv_data.py` and `generate_insurance_data.py` separately instead of using `generate_all_data.py`.
+
+**Solution:** Clear and regenerate all data:
+
+```bash
+source venv/bin/activate
+
+# This will clear existing data and regenerate with proper linkage
+python3 generate_all_data.py --num-users 50
+
+deactivate
+```
+
+**Verify linkage:**
+```bash
+# Check MongoDB has users
+docker exec lynx-mongodb mongosh idv_data --quiet --eval "db.user_profiles.countDocuments({})"
+
+# Check PostgreSQL has matching customers
+docker exec lynx-postgres psql -U admin -d insurance_db -c "SELECT COUNT(*) FROM customers;"
+
+# The counts should match (both should be 50 if you generated 50 users)
 ```
 
 ### Python Virtual Environment Issues
