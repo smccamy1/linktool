@@ -553,6 +553,10 @@
                         <div class="legend-color" style="background: #94a3b8;"></div>
                         <span>Attempt</span>
                     </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #ff6b35;"></div>
+                        <span>Shared IP (High Velocity)</span>
+                    </div>
                 </div>
             </div>
 
@@ -946,16 +950,16 @@
                         <value>${data.riskLevel}</value>
                     </div>
                     <div class="detail-item">
-                        <label>Confidence Score:</label>
-                        <value>${(data.confidence_score * 100).toFixed(1)}%</value>
+                        <label>Risk Score:</label>
+                        <value>${(data.riskScore * 100).toFixed(1)}%</value>
+                    </div>
+                    <div class="detail-item">
+                        <label>Attempt Count:</label>
+                        <value>${data.attemptCount}</value>
                     </div>
                 </div>
                 <div class="detail-section">
-                    <h3>Document Information</h3>
-                    <div class="detail-item">
-                        <label>Document Type:</label>
-                        <value>${data.documentType}</value>
-                    </div>
+                    <h3>Verification Details</h3>
                     <div class="detail-item">
                         <label>Method:</label>
                         <value>${data.verificationMethod}</value>
@@ -971,6 +975,12 @@
                     </div>
                     ` : ''}
                 </div>
+                ${data.triggeredRules && data.triggeredRules.length > 0 ? `
+                <div class="detail-section">
+                    <h3>Triggered Risk Rules</h3>
+                    ${data.triggeredRules.map(rule => `<span class="status-badge" style="margin: 2px; background: #ff6b35;">${rule.replace(/_/g, ' ')}</span>`).join('')}
+                </div>
+                ` : ''}
                 ${data.flags.length > 0 ? `
                 <div class="detail-section">
                     <h3>Flags</h3>
@@ -1145,7 +1155,10 @@
 
         // Fraud filter functions
         let originalNodeColors = {};
+        let originalNodeData = [];
+        let originalEdgeData = [];
         let currentFilter = 'none';
+        let ipNodesAdded = [];
 
         async function applyFraudFilter() {
             const filterSelect = document.getElementById('fraudFilter');
@@ -1153,12 +1166,29 @@
             currentFilter = filterValue;
             
             if (filterValue === 'none') {
+                // Remove IP nodes if they were added
+                if (ipNodesAdded.length > 0) {
+                    ipNodesAdded.forEach(nodeId => {
+                        try {
+                            nodes.remove(nodeId);
+                        } catch (e) {
+                            console.log('Node already removed:', nodeId);
+                        }
+                    });
+                    ipNodesAdded = [];
+                    
+                    // Remove IP edges
+                    edges.clear();
+                    edges.add(originalEdgeData);
+                }
+                
                 // Restore original colors
                 nodes.forEach(node => {
                     if (originalNodeColors[node.id]) {
                         nodes.update({
                             id: node.id,
-                            color: originalNodeColors[node.id]
+                            color: originalNodeColors[node.id],
+                            size: node.type === 'user' ? 25 : (node.type === 'verification' ? 20 : 15)
                         });
                     }
                 });
@@ -1170,11 +1200,13 @@
                 const response = await fetch(`/api/fraud-patterns/users-by-filter?filter=${filterValue}`);
                 const data = await response.json();
                 
-                // Save original colors if not saved
+                // Save original colors and data if not saved
                 if (Object.keys(originalNodeColors).length === 0) {
                     nodes.forEach(node => {
                         originalNodeColors[node.id] = node.color;
                     });
+                    originalNodeData = nodes.get();
+                    originalEdgeData = edges.get();
                 }
                 
                 // Highlight filtered users
@@ -1197,6 +1229,44 @@
                         }
                     }
                 });
+                
+                // Add IP nodes and edges if high velocity filter
+                if (filterValue === 'high_ip_velocity') {
+                    const ipResponse = await fetch('/api/fraud-patterns/ip-nodes');
+                    const ipData = await ipResponse.json();
+                    
+                    // Add IP nodes
+                    const ipNodesToAdd = ipData.nodes.map(ipNode => {
+                        const color = ipNode.isHighVelocityIP ? '#ff6b35' : '#ffa500';
+                        ipNodesAdded.push(ipNode.id);
+                        
+                        return {
+                            id: ipNode.id,
+                            label: ipNode.label,
+                            color: color,
+                            shape: 'hexagon',
+                            size: 35,
+                            type: 'ip',
+                            data: ipNode,
+                            font: { size: 12, color: '#000000' }
+                        };
+                    });
+                    
+                    nodes.add(ipNodesToAdd);
+                    
+                    // Add edges from users to IPs
+                    const ipEdgesToAdd = ipData.edges.map(edge => ({
+                        from: edge.from,
+                        to: edge.to,
+                        color: { color: '#ff6b35', opacity: 0.5 },
+                        width: 2,
+                        dashes: true
+                    }));
+                    
+                    edges.add(ipEdgesToAdd);
+                    
+                    console.log(`Added ${ipNodesToAdd.length} IP nodes and ${ipEdgesToAdd.length} edges`);
+                }
                 
                 console.log(`Applied ${filterValue} filter: ${data.userIds.length} users highlighted`);
                 

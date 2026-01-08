@@ -53,11 +53,24 @@ class IDVDataGenerator:
             'manual_review', 'automated', 'hybrid', 'video_call'
         ]
         self.rejection_reasons = [
-            'document_expired', 'poor_image_quality', 'document_mismatch',
-            'fraudulent_document', 'underage', 'sanctions_list_match',
-            'incomplete_information'
+            'failed_risk_rules', 'suspicious_ip', 'high_velocity_detected',
+            'suspicious_user_agent', 'impossible_travel', 'multiple_failed_attempts',
+            'blacklisted_ip'
         ]
         self.risk_levels = ['low', 'medium', 'high', 'critical']
+        self.risk_rules = [
+            'multiple_accounts_same_ip',
+            'high_velocity_ip',
+            'suspicious_user_agent',
+            'impossible_travel',
+            'unusual_login_time',
+            'tor_exit_node',
+            'proxy_detected',
+            'vpn_detected',
+            'multiple_failed_attempts',
+            'account_age_mismatch',
+            'behavior_anomaly'
+        ]
         
         # IP velocity simulation - create pool of shared IPs
         self.shared_ip_pool = [self.faker.ipv4() for _ in range(50)]  # 50 shared IPs
@@ -133,37 +146,36 @@ class IDVDataGenerator:
         
         verification_id = str(uuid.uuid4())
         status = random.choice(self.verification_statuses)
-        document_type = random.choice(self.document_types)
         method = random.choice(self.verification_methods)
+        risk_level = random.choice(self.risk_levels)
         
-        # Generate base verification data
+        # Generate triggered risk rules based on risk level
+        num_rules_triggered = 0
+        if risk_level == 'low':
+            num_rules_triggered = random.randint(0, 1)
+        elif risk_level == 'medium':
+            num_rules_triggered = random.randint(1, 3)
+        elif risk_level == 'high':
+            num_rules_triggered = random.randint(2, 5)
+        elif risk_level == 'critical':
+            num_rules_triggered = random.randint(4, 8)
+        
+        triggered_rules = random.sample(self.risk_rules, min(num_rules_triggered, len(self.risk_rules)))
+        
+        # Generate base verification data focused on login risk
         verification = {
             'verificationId': verification_id,
             'userId': user_id,
             'status': status,
-            'riskLevel': random.choice(self.risk_levels),
+            'riskLevel': risk_level,
             'verificationMethod': method,
-            'documentType': document_type,
-            'documentNumber': self.faker.bothify(text='??########'),
-            'documentIssuingCountry': self.faker.country_code(),
-            'documentExpiryDate': self.faker.date_between(start_date='today', end_date='+10y').isoformat(),
             'submittedAt': self.faker.date_time_between(start_date='-60d', end_date='now').isoformat(),
             'reviewedAt': None,
             'reviewedBy': None,
             'processingTime': None,
-            'confidence_score': round(random.uniform(0.0, 1.0), 3),
-            'biometric_match_score': round(random.uniform(0.5, 1.0), 3) if random.random() > 0.3 else None,
-            'liveness_check_passed': random.choice([True, False, None]),
-            'sanctions_check_passed': random.choice([True, False]),
-            'pep_check_passed': random.choice([True, False]),
-            'aml_check_passed': random.choice([True, False]),
-            'metadata': {
-                'frontImageQuality': round(random.uniform(0.5, 1.0), 2),
-                'backImageQuality': round(random.uniform(0.5, 1.0), 2),
-                'selfieImageQuality': round(random.uniform(0.5, 1.0), 2) if random.random() > 0.2 else None,
-                'ocrConfidence': round(random.uniform(0.7, 1.0), 2),
-                'documentAuthenticity': round(random.uniform(0.6, 1.0), 2)
-            },
+            'riskScore': round(random.uniform(0.0, 1.0), 3),
+            'triggeredRules': triggered_rules,
+            'attemptCount': random.randint(1, 5),
             'flags': []
         }
         
@@ -182,11 +194,11 @@ class IDVDataGenerator:
             verification['rejectionReason'] = random.choice(self.rejection_reasons)
             verification['rejectionDetails'] = self.faker.sentence()
         
-        # Add random flags
+        # Add random flags based on login patterns
         possible_flags = [
-            'age_mismatch', 'address_mismatch', 'name_mismatch',
-            'expired_document', 'low_quality_image', 'multiple_attempts',
-            'suspicious_activity', 'proxy_detected'
+            'multiple_attempts', 'suspicious_activity', 'proxy_detected',
+            'high_velocity_ip', 'unusual_location', 'suspicious_timing',
+            'behavior_anomaly', 'device_mismatch'
         ]
         if random.random() > 0.7:
             verification['flags'] = random.sample(possible_flags, random.randint(1, 3))

@@ -101,9 +101,10 @@ def get_graph_data():
                     'userId': verification['userId'],
                     'status': verification['status'],
                     'riskLevel': verification['riskLevel'],
-                    'documentType': verification['documentType'],
+                    'riskScore': verification.get('riskScore', 0),
+                    'triggeredRules': verification.get('triggeredRules', []),
                     'verificationMethod': verification['verificationMethod'],
-                    'confidence_score': verification['confidence_score'],
+                    'attemptCount': verification.get('attemptCount', 1),
                     'submittedAt': verification['submittedAt'],
                     'reviewedAt': verification.get('reviewedAt'),
                     'flags': verification.get('flags', [])
@@ -519,6 +520,85 @@ def get_users_by_filter():
             'filter': filter_type,
             'userIds': user_ids,
             'count': len(user_ids)
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'error': str(e)
+        }), 500
+
+
+@app.route('/api/fraud-patterns/ip-nodes')
+def get_ip_nodes():
+    """
+    Get IP address nodes and edges for high-velocity IP visualization.
+    Returns IPs that have multiple users sharing them.
+    """
+    try:
+        db = get_mongo_connection()
+        
+        # Aggregate to find shared IPs
+        pipeline = [
+            {
+                '$group': {
+                    '_id': '$ipAddress',
+                    'users': {'$addToSet': '$userId'},
+                    'sessionCount': {'$sum': 1},
+                    'isHighVelocityIP': {'$first': '$isHighVelocityIP'}
+                }
+            },
+            {
+                '$match': {
+                    '$expr': {
+                        '$gt': [{'$size': '$users'}, 1]  # Only IPs with multiple users
+                    }
+                }
+            },
+            {
+                '$project': {
+                    'ipAddress': '$_id',
+                    'users': 1,
+                    'userCount': {'$size': '$users'},
+                    'sessionCount': 1,
+                    'isHighVelocityIP': 1
+                }
+            }
+        ]
+        
+        ip_data = list(db.login_sessions.aggregate(pipeline))
+        
+        # Create nodes and edges
+        nodes = []
+        edges = []
+        
+        for ip_info in ip_data:
+            ip_address = ip_info['ipAddress']
+            user_count = ip_info['userCount']
+            is_high_velocity = ip_info.get('isHighVelocityIP', False)
+            
+            # Create IP node
+            nodes.append({
+                'id': f"ip_{ip_address}",
+                'label': f"{ip_address}\\n({user_count} users)",
+                'type': 'ip',
+                'ipAddress': ip_address,
+                'userCount': user_count,
+                'sessionCount': ip_info['sessionCount'],
+                'isHighVelocityIP': is_high_velocity
+            })
+            
+            # Create edges from users to this IP
+            for user_id in ip_info['users']:
+                edges.append({
+                    'from': user_id,
+                    'to': f"ip_{ip_address}",
+                    'type': 'uses_ip'
+                })
+        
+        return jsonify({
+            'nodes': nodes,
+            'edges': edges,
+            'totalSharedIPs': len(nodes)
         })
         
     except Exception as e:
