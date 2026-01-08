@@ -120,9 +120,9 @@ def main():
         
         # Clear existing insurance data
         print("Clearing existing insurance data from PostgreSQL...")
-        cursor = insurance_ingestor.postgres_conn.cursor()
+        cursor = insurance_ingestor.pg_conn.cursor()
         cursor.execute("TRUNCATE TABLE payments, dependents, claims, policies, customers RESTART IDENTITY CASCADE")
-        insurance_ingestor.postgres_conn.commit()
+        insurance_ingestor.pg_conn.commit()
         cursor.close()
         print("✓ PostgreSQL cleared")
         
