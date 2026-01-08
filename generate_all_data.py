@@ -17,8 +17,8 @@ def main():
     parser.add_argument(
         '--num-users',
         type=int,
-        default=50,
-        help='Number of IDV users to generate (default: 50)'
+        default=100,
+        help='Number of IDV users to generate (default: 100)'
     )
     parser.add_argument(
         '--mongo-uri',

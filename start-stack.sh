@@ -14,7 +14,7 @@ NC='\033[0m' # No Color
 
 # Configuration
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-NUM_USERS=50
+NUM_USERS=100
 SKIP_DATA_GENERATION=false
 
 # Parse command line arguments
@@ -32,7 +32,7 @@ while [[ $# -gt 0 ]]; do
             echo "Usage: $0 [OPTIONS]"
             echo ""
             echo "Options:"
-            echo "  -n, --num-users NUM    Number of fake users to generate (default: 50)"
+            echo "  -n, --num-users NUM    Number of fake users to generate (default: 100)"
             echo "  --skip-data           Skip data generation"
             echo "  -h, --help            Show this help message"
             exit 0

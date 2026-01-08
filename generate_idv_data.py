@@ -212,7 +212,7 @@ class IDVDataGenerator:
         
         sessions = []
         # Decide if this user exhibits high IP velocity (shared IP patterns)
-        uses_shared_ips = random.random() < 0.3  # 30% of users show velocity patterns
+        uses_shared_ips = random.random() < 0.2  # 20% of users show velocity patterns
         
         for i in range(num_sessions):
             # Generate session timestamp
