@@ -51,8 +51,8 @@ Please install manually:
 
 1. Clone the repository:
 ```bash
-git clone <repository-url>
-cd Lynx
+git clone https://github.com/smccamy1/linktool.git
+cd linktool
 ```
 
 2. Make setup script executable and run:
@@ -68,6 +68,8 @@ The script will:
 - Generate fake IDV data (50 users by default)
 - Generate fake insurance data linked to IDV users
 - Set up OpenSearch dashboards
+
+📖 **For detailed Ubuntu setup instructions and troubleshooting, see [UBUNTU_SETUP.md](UBUNTU_SETUP.md)**
 - Display access information
 
 **Once complete, open http://localhost:5050 to see the graph visualization!**
