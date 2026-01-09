@@ -79,6 +79,27 @@ services:
     depends_on:
       - mongodb
       - opensearch
+      - rabbitmq
+
+  # RabbitMQ Service
+  rabbitmq:
+    image: rabbitmq:3.13-management
+    container_name: lynx-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: admin
+      RABBITMQ_DEFAULT_PASS: rabbitmqpass123
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    ports:
+      - "5672:5672"    # AMQP port
+      - "15672:15672"  # Management UI
+    networks:
+      - lynx-network
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   # PostgreSQL Service (Insurance RDBMS)
   postgres:
@@ -132,3 +153,4 @@ volumes:
   mongodb-data:
   nodered-data:
   postgres-data:
+  rabbitmq-data:
