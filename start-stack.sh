@@ -219,6 +219,7 @@ docker volume rm lynx_opensearch-data 2>/dev/null || true
 docker volume rm lynx_mongodb-data 2>/dev/null || true
 docker volume rm lynx_nodered-data 2>/dev/null || true
 docker volume rm lynx_postgres-data 2>/dev/null || true
+docker volume rm lynx_rabbitmq-data 2>/dev/null || true
 
 # Pull latest images
 echo ""
@@ -243,13 +244,14 @@ while [ $ELAPSED -lt $MAX_WAIT ]; do
     MONGODB_HEALTHY=$(docker inspect --format='{{.State.Health.Status}}' lynx-mongodb 2>/dev/null || echo "starting")
     OPENSEARCH_HEALTHY=$(docker inspect --format='{{.State.Health.Status}}' lynx-opensearch 2>/dev/null || echo "starting")
     POSTGRES_HEALTHY=$(docker inspect --format='{{.State.Health.Status}}' lynx-postgres 2>/dev/null || echo "starting")
+    RABBITMQ_HEALTHY=$(docker inspect --format='{{.State.Health.Status}}' lynx-rabbitmq 2>/dev/null || echo "starting")
     
-    if [ "$MONGODB_HEALTHY" == "healthy" ] && [ "$OPENSEARCH_HEALTHY" == "healthy" ] && [ "$POSTGRES_HEALTHY" == "healthy" ]; then
+    if [ "$MONGODB_HEALTHY" == "healthy" ] && [ "$OPENSEARCH_HEALTHY" == "healthy" ] && [ "$POSTGRES_HEALTHY" == "healthy" ] && [ "$RABBITMQ_HEALTHY" == "healthy" ]; then
         echo -e "${GREEN}✓ All services are healthy!${NC}"
         break
     fi
     
-    echo "  MongoDB: $MONGODB_HEALTHY | OpenSearch: $OPENSEARCH_HEALTHY | PostgreSQL: $POSTGRES_HEALTHY"
+    echo "  MongoDB: $MONGODB_HEALTHY | OpenSearch: $OPENSEARCH_HEALTHY | PostgreSQL: $POSTGRES_HEALTHY | RabbitMQ: $RABBITMQ_HEALTHY"
     sleep $SLEEP_INTERVAL
     ELAPSED=$((ELAPSED + SLEEP_INTERVAL))
 done
@@ -284,6 +286,19 @@ if [ "$OPENSEARCH_READY" = false ]; then
     echo -e "${YELLOW}You can try running the data generation manually later with:${NC}"
     echo "  source venv/bin/activate"
     echo "  python generate_idv_data.py --num-users $NUM_USERS"
+fi
+
+# Install Node-RED AMQP nodes for RabbitMQ integration
+echo ""
+echo -e "${YELLOW}Installing Node-RED AMQP nodes for RabbitMQ...${NC}"
+if docker exec lynx-nodered sh -c "cd /data && npm install node-red-contrib-amqp" >/dev/null 2>&1; then
+    echo -e "${GREEN}✓ AMQP nodes installed in Node-RED${NC}"
+    echo -e "${YELLOW}Restarting Node-RED to load new nodes...${NC}"
+    docker restart lynx-nodered >/dev/null 2>&1
+    echo -e "${GREEN}✓ Node-RED restarted${NC}"
+else
+    echo -e "${YELLOW}⚠ Could not install AMQP nodes automatically${NC}"
+    echo "  You can install them manually from Node-RED's palette manager"
 fi
 
 # Install Python dependencies and generate data
@@ -352,6 +367,7 @@ echo "Services are accessible at:"
 echo ""
 echo -e "  ${GREEN}Web UI (Graph Viz):${NC}    http://localhost:5050"
 echo -e "  ${GREEN}Node-RED:${NC}              http://localhost:1880"
+echo -e "  ${GREEN}RabbitMQ Management:${NC}   http://localhost:15672"
 echo -e "  ${GREEN}OpenSearch:${NC}            http://localhost:9200"
 echo -e "  ${GREEN}OpenSearch Dashboards:${NC} http://localhost:5601"
 echo -e "  ${GREEN}MongoDB:${NC}               mongodb://localhost:27017"
@@ -361,6 +377,7 @@ echo "Credentials:"
 echo -e "  ${YELLOW}OpenSearch:${NC}  No authentication (security disabled for development)"
 echo -e "  ${YELLOW}MongoDB:${NC}     admin / mongopass123"
 echo -e "  ${YELLOW}PostgreSQL:${NC}  admin / postgrespass123"
+echo -e "  ${YELLOW}RabbitMQ:${NC}    admin / rabbitmqpass123"
 echo ""
 echo -e "${GREEN}Quick Start:${NC}"
 echo "  1. Open the Graph Visualization UI: ${GREEN}http://localhost:5050${NC}"
