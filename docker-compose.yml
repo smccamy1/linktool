@@ -91,8 +91,8 @@ services:
     volumes:
       - rabbitmq-data:/var/lib/rabbitmq
     ports:
-      - "5672:5672"    # AMQP port
-      - "15672:15672"  # Management UI
+      - "0.0.0.0:5672:5672"    # AMQP port (accessible from network)
+      - "0.0.0.0:15672:15672"  # Management UI (accessible from network)
     networks:
       - lynx-network
     healthcheck:
