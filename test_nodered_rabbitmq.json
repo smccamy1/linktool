@@ -1,0 +1,124 @@
+[
+    {
+        "id": "test_rabbitmq_flow",
+        "type": "tab",
+        "label": "RabbitMQ Test Flow",
+        "disabled": false,
+        "info": "Test RabbitMQ connectivity from Node-RED"
+    },
+    {
+        "id": "inject_test",
+        "type": "inject",
+        "z": "test_rabbitmq_flow",
+        "name": "Send Test Message",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "test.message",
+        "payload": "{\"message\":\"Hello from Node-RED\",\"timestamp\":\"{{timestamp}}\"}",
+        "payloadType": "json",
+        "x": 160,
+        "y": 120,
+        "wires": [
+            [
+                "rabbitmq_out",
+                "debug_out"
+            ]
+        ]
+    },
+    {
+        "id": "rabbitmq_out",
+        "type": "rabbitmq-out",
+        "z": "test_rabbitmq_flow",
+        "name": "Publish to RabbitMQ",
+        "broker": "rabbitmq_broker",
+        "exchange": "test_exchange",
+        "exchangeType": "topic",
+        "durable": false,
+        "autoDelete": false,
+        "routingKey": "test.message",
+        "x": 410,
+        "y": 120,
+        "wires": []
+    },
+    {
+        "id": "rabbitmq_in",
+        "type": "rabbitmq-in",
+        "z": "test_rabbitmq_flow",
+        "name": "Subscribe from RabbitMQ",
+        "broker": "rabbitmq_broker",
+        "exchange": "test_exchange",
+        "exchangeType": "topic",
+        "durable": false,
+        "autoDelete": false,
+        "routingKey": "test.#",
+        "x": 180,
+        "y": 240,
+        "wires": [
+            [
+                "debug_in"
+            ]
+        ]
+    },
+    {
+        "id": "debug_out",
+        "type": "debug",
+        "z": "test_rabbitmq_flow",
+        "name": "Debug: Sent",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 410,
+        "y": 180,
+        "wires": []
+    },
+    {
+        "id": "debug_in",
+        "type": "debug",
+        "z": "test_rabbitmq_flow",
+        "name": "Debug: Received",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 430,
+        "y": 240,
+        "wires": []
+    },
+    {
+        "id": "rabbitmq_broker",
+        "type": "rabbitmq-broker",
+        "name": "Local RabbitMQ",
+        "host": "rabbitmq",
+        "port": "5672",
+        "vhost": "",
+        "keepalive": "30",
+        "usetls": false,
+        "verifyservercert": true,
+        "useca": false,
+        "ca": "",
+        "credentials": {
+            "username": "admin",
+            "password": "rabbitmqpass123"
+        }
+    }
+]

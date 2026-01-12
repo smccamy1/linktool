@@ -1,0 +1,131 @@
+[
+    {
+        "id": "amqp_test_tab",
+        "type": "tab",
+        "label": "RabbitMQ Test (amqplib)",
+        "disabled": false,
+        "info": "Test RabbitMQ using amqplib in function nodes"
+    },
+    {
+        "id": "inject_msg",
+        "type": "inject",
+        "z": "amqp_test_tab",
+        "name": "Send Test Message",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "test.message",
+        "payload": "{\"message\":\"Hello from Node-RED\",\"timestamp\":\"{{timestamp}}\",\"id\":123}",
+        "payloadType": "json",
+        "x": 140,
+        "y": 80,
+        "wires": [
+            [
+                "rabbitmq_publish"
+            ]
+        ]
+    },
+    {
+        "id": "rabbitmq_publish",
+        "type": "function",
+        "z": "amqp_test_tab",
+        "name": "Publish to RabbitMQ",
+        "func": "const amqp = global.get('amqplib') || require('amqplib');\nglobal.set('amqplib', amqp);\n\nconst config = {\n    host: 'rabbitmq',\n    port: 5672,\n    username: 'admin',\n    password: 'rabbitmqpass123'\n};\n\nconst url = `amqp://${config.username}:${config.password}@${config.host}:${config.port}`;\n\n(async () => {\n    try {\n        const connection = await amqp.connect(url);\n        const channel = await connection.createChannel();\n        \n        const exchange = 'test_exchange';\n        const routingKey = msg.topic || 'test.message';\n        \n        await channel.assertExchange(exchange, 'topic', { durable: false });\n        \n        const message = typeof msg.payload === 'string' ? msg.payload : JSON.stringify(msg.payload);\n        \n        channel.publish(exchange, routingKey, Buffer.from(message));\n        \n        node.status({fill:\"green\",shape:\"dot\",text:\"published\"});\n        \n        setTimeout(() => {\n            channel.close();\n            connection.close();\n        }, 500);\n        \n        node.send({payload: `Published: ${message}`, topic: routingKey});\n        \n    } catch (error) {\n        node.error(`RabbitMQ Error: ${error.message}`, msg);\n        node.status({fill:\"red\",shape:\"ring\",text:\"error\"});\n    }\n})();\n\nreturn null;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 380,
+        "y": 80,
+        "wires": [
+            [
+                "debug_published"
+            ]
+        ]
+    },
+    {
+        "id": "rabbitmq_subscribe",
+        "type": "function",
+        "z": "amqp_test_tab",
+        "name": "Subscribe from RabbitMQ",
+        "func": "const amqp = global.get('amqplib') || require('amqplib');\nglobal.set('amqplib', amqp);\n\nconst config = {\n    host: 'rabbitmq',\n    port: 5672,\n    username: 'admin',\n    password: 'rabbitmqpass123'\n};\n\nconst url = `amqp://${config.username}:${config.password}@${config.host}:${config.port}`;\n\nif (!context.get('subscriber')) {\n    (async () => {\n        try {\n            const connection = await amqp.connect(url);\n            const channel = await connection.createChannel();\n            \n            const exchange = 'test_exchange';\n            const routingKey = 'test.#';\n            \n            await channel.assertExchange(exchange, 'topic', { durable: false });\n            const q = await channel.assertQueue('', { exclusive: true });\n            \n            await channel.bindQueue(q.queue, exchange, routingKey);\n            \n            channel.consume(q.queue, (msg) => {\n                if (msg) {\n                    const content = msg.content.toString();\n                    try {\n                        const parsed = JSON.parse(content);\n                        node.send({payload: parsed, topic: msg.fields.routingKey});\n                    } catch (e) {\n                        node.send({payload: content, topic: msg.fields.routingKey});\n                    }\n                    channel.ack(msg);\n                }\n            });\n            \n            context.set('subscriber', { connection, channel });\n            node.status({fill:\"green\",shape:\"dot\",text:\"connected\"});\n            \n        } catch (error) {\n            node.error(`RabbitMQ Subscribe Error: ${error.message}`);\n            node.status({fill:\"red\",shape:\"ring\",text:\"error\"});\n        }\n    })();\n} else {\n    node.status({fill:\"green\",shape:\"dot\",text:\"connected\"});\n}\n\nreturn null;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "// Cleanup on close\nconst subscriber = context.get('subscriber');\nif (subscriber) {\n    try {\n        subscriber.channel.close();\n        subscriber.connection.close();\n    } catch (e) {}\n    context.set('subscriber', null);\n}",
+        "libs": [],
+        "x": 170,
+        "y": 200,
+        "wires": [
+            [
+                "debug_received"
+            ]
+        ]
+    },
+    {
+        "id": "debug_published",
+        "type": "debug",
+        "z": "amqp_test_tab",
+        "name": "Published",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 600,
+        "y": 80,
+        "wires": []
+    },
+    {
+        "id": "debug_received",
+        "type": "debug",
+        "z": "amqp_test_tab",
+        "name": "Received",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "true",
+        "targetType": "full",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 400,
+        "y": 200,
+        "wires": []
+    },
+    {
+        "id": "start_subscriber",
+        "type": "inject",
+        "z": "amqp_test_tab",
+        "name": "Start Subscriber",
+        "props": [],
+        "repeat": "",
+        "crontab": "",
+        "once": true,
+        "onceDelay": "1",
+        "topic": "",
+        "x": 150,
+        "y": 140,
+        "wires": [
+            [
+                "rabbitmq_subscribe"
+            ]
+        ]
+    }
+]

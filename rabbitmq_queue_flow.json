@@ -1,0 +1,374 @@
+[
+    {
+        "id": "rabbitmq_queue_tab",
+        "type": "tab",
+        "label": "RabbitMQ Work Queue",
+        "disabled": false,
+        "info": "Working example of RabbitMQ work queue pattern with task distribution using amqplib"
+    },
+    {
+        "id": "inject_task",
+        "type": "inject",
+        "z": "rabbitmq_queue_tab",
+        "name": "Generate Task",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 130,
+        "y": 80,
+        "wires": [
+            [
+                "create_task"
+            ]
+        ]
+    },
+    {
+        "id": "inject_batch",
+        "type": "inject",
+        "z": "rabbitmq_queue_tab",
+        "name": "Generate 10 Tasks",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "10",
+        "payloadType": "num",
+        "x": 140,
+        "y": 120,
+        "wires": [
+            [
+                "create_batch"
+            ]
+        ]
+    },
+    {
+        "id": "create_task",
+        "type": "function",
+        "z": "rabbitmq_queue_tab",
+        "name": "Create Task",
+        "func": "const taskId = Math.floor(Math.random() * 10000);\nconst complexity = Math.floor(Math.random() * 5) + 1;\n\nmsg.payload = {\n    taskId: taskId,\n    type: 'data_processing',\n    complexity: complexity,\n    data: `Task ${taskId} - Process this data`,\n    timestamp: new Date().toISOString(),\n    processingTime: complexity * 1000 // ms\n};\n\nnode.status({fill:\"blue\",shape:\"dot\",text:`Created task ${taskId}`});\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 330,
+        "y": 80,
+        "wires": [
+            [
+                "send_to_queue",
+                "debug_task_created"
+            ]
+        ]
+    },
+    {
+        "id": "create_batch",
+        "type": "function",
+        "z": "rabbitmq_queue_tab",
+        "name": "Create Batch Tasks",
+        "func": "const count = msg.payload || 10;\nconst messages = [];\n\nfor (let i = 0; i < count; i++) {\n    const taskId = Math.floor(Math.random() * 10000);\n    const complexity = Math.floor(Math.random() * 5) + 1;\n    \n    messages.push({\n        payload: {\n            taskId: taskId,\n            type: 'data_processing',\n            complexity: complexity,\n            data: `Batch task ${taskId}`,\n            timestamp: new Date().toISOString(),\n            processingTime: complexity * 1000\n        }\n    });\n}\n\nnode.status({fill:\"blue\",shape:\"dot\",text:`Created ${count} tasks`});\nreturn [messages];",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 350,
+        "y": 120,
+        "wires": [
+            [
+                "send_to_queue",
+                "debug_batch_created"
+            ]
+        ]
+    },
+    {
+        "id": "send_to_queue",
+        "type": "function",
+        "z": "rabbitmq_queue_tab",
+        "name": "Send to Queue",
+        "func": "const amqp = global.get('amqplib') || amqplib;\nif (!global.get('amqplib')) {\n    global.set('amqplib', amqplib);\n}\n\nconst config = {\n    host: 'rabbitmq',\n    port: 5672,\n    username: 'admin',\n    password: 'rabbitmqpass123'\n};\n\nconst url = `amqp://${config.username}:${config.password}@${config.host}:${config.port}`;\n\n(async () => {\n    try {\n        const connection = await amqp.connect(url);\n        const channel = await connection.createChannel();\n        \n        const queueName = 'work_queue';\n        await channel.assertQueue(queueName, { durable: true });\n        \n        const message = JSON.stringify(msg.payload);\n        channel.sendToQueue(queueName, Buffer.from(message), { persistent: true });\n        \n        node.status({fill:\"green\",shape:\"dot\",text:`Sent task ${msg.payload.taskId}`});\n        \n        setTimeout(() => {\n            channel.close();\n            connection.close();\n        }, 500);\n        \n    } catch (error) {\n        node.error(`RabbitMQ Error: ${error.message}`, msg);\n        node.status({fill:\"red\",shape:\"ring\",text:\"error\"});\n    }\n})();\n\nreturn null;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [
+            {
+                "var": "amqplib",
+                "module": "amqplib"
+            }
+        ],
+        "x": 580,
+        "y": 100,
+        "wires": []
+    },
+    {
+        "id": "worker1_consumer",
+        "type": "function",
+        "z": "rabbitmq_queue_tab",
+        "name": "Worker 1 Consumer",
+        "func": "const amqp = global.get('amqplib') || amqplib;\nif (!global.get('amqplib')) {\n    global.set('amqplib', amqplib);\n}\n\nconst config = {\n    host: 'rabbitmq',\n    port: 5672,\n    username: 'admin',\n    password: 'rabbitmqpass123'\n};\n\nconst url = `amqp://${config.username}:${config.password}@${config.host}:${config.port}`;\n\nif (!context.get('worker1_connection')) {\n    (async () => {\n        try {\n            const connection = await amqp.connect(url);\n            const channel = await connection.createChannel();\n            \n            const queueName = 'work_queue';\n            await channel.assertQueue(queueName, { durable: true });\n            channel.prefetch(1); // Fair dispatch\n            \n            channel.consume(queueName, (msg) => {\n                if (msg) {\n                    const content = msg.content.toString();\n                    try {\n                        const task = JSON.parse(content);\n                        node.send({\n                            payload: task,\n                            _msgid: msg.properties.messageId,\n                            acknowledge: () => channel.ack(msg)\n                        });\n                    } catch (e) {\n                        node.error(`Parse error: ${e.message}`);\n                        channel.nack(msg, false, false); // Reject without requeue\n                    }\n                }\n            }, { noAck: false });\n            \n            context.set('worker1_connection', { connection, channel });\n            node.status({fill:\"green\",shape:\"dot\",text:\"Worker 1 connected\"});\n            \n        } catch (error) {\n            node.error(`Worker 1 connection error: ${error.message}`);\n            node.status({fill:\"red\",shape:\"ring\",text:\"connection error\"});\n        }\n    })();\n} else {\n    node.status({fill:\"green\",shape:\"dot\",text:\"Worker 1 connected\"});\n}\n\nreturn null;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "const conn = context.get('worker1_connection');\nif (conn) {\n    try {\n        conn.channel.close();\n        conn.connection.close();\n    } catch (e) {}\n    context.set('worker1_connection', null);\n}",
+        "libs": [
+            {
+                "var": "amqplib",
+                "module": "amqplib"
+            }
+        ],
+        "x": 140,
+        "y": 260,
+        "wires": [
+            [
+                "process_worker1",
+                "debug_worker1_received"
+            ]
+        ]
+    },
+    {
+        "id": "worker2_consumer",
+        "type": "function",
+        "z": "rabbitmq_queue_tab",
+        "name": "Worker 2 Consumer",
+        "func": "const amqp = global.get('amqplib') || amqplib;\nif (!global.get('amqplib')) {\n    global.set('amqplib', amqplib);\n}\n\nconst config = {\n    host: 'rabbitmq',\n    port: 5672,\n    username: 'admin',\n    password: 'rabbitmqpass123'\n};\n\nconst url = `amqp://${config.username}:${config.password}@${config.host}:${config.port}`;\n\nif (!context.get('worker2_connection')) {\n    (async () => {\n        try {\n            const connection = await amqp.connect(url);\n            const channel = await connection.createChannel();\n            \n            const queueName = 'work_queue';\n            await channel.assertQueue(queueName, { durable: true });\n            channel.prefetch(1); // Fair dispatch\n            \n            channel.consume(queueName, (msg) => {\n                if (msg) {\n                    const content = msg.content.toString();\n                    try {\n                        const task = JSON.parse(content);\n                        node.send({\n                            payload: task,\n                            _msgid: msg.properties.messageId,\n                            acknowledge: () => channel.ack(msg)\n                        });\n                    } catch (e) {\n                        node.error(`Parse error: ${e.message}`);\n                        channel.nack(msg, false, false); // Reject without requeue\n                    }\n                }\n            }, { noAck: false });\n            \n            context.set('worker2_connection', { connection, channel });\n            node.status({fill:\"green\",shape:\"dot\",text:\"Worker 2 connected\"});\n            \n        } catch (error) {\n            node.error(`Worker 2 connection error: ${error.message}`);\n            node.status({fill:\"red\",shape:\"ring\",text:\"connection error\"});\n        }\n    })();\n} else {\n    node.status({fill:\"green\",shape:\"dot\",text:\"Worker 2 connected\"});\n}\n\nreturn null;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "const conn = context.get('worker2_connection');\nif (conn) {\n    try {\n        conn.channel.close();\n        conn.connection.close();\n    } catch (e) {}\n    context.set('worker2_connection', null);\n}",
+        "libs": [
+            {
+                "var": "amqplib",
+                "module": "amqplib"
+            }
+        ],
+        "x": 140,
+        "y": 340,
+        "wires": [
+            [
+                "process_worker2",
+                "debug_worker2_received"
+            ]
+        ]
+    },
+    {
+        "id": "process_worker1",
+        "type": "function",
+        "z": "rabbitmq_queue_tab",
+        "name": "Process Task (Worker 1)",
+        "func": "const task = msg.payload;\nconst processingTime = task.processingTime || 1000;\nconst acknowledge = msg.acknowledge;\n\nnode.status({fill:\"yellow\",shape:\"ring\",text:`Processing ${task.taskId}`});\n\n// Simulate processing delay\nsetTimeout(() => {\n    msg.payload = {\n        ...task,\n        worker: 'Worker 1',\n        status: 'completed',\n        completedAt: new Date().toISOString()\n    };\n    \n    // Acknowledge the message\n    if (acknowledge) acknowledge();\n    \n    node.status({fill:\"green\",shape:\"dot\",text:`Completed ${task.taskId}`});\n    node.send(msg);\n}, processingTime);\n\nreturn null;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 390,
+        "y": 260,
+        "wires": [
+            [
+                "debug_worker1_completed"
+            ]
+        ]
+    },
+    {
+        "id": "process_worker2",
+        "type": "function",
+        "z": "rabbitmq_queue_tab",
+        "name": "Process Task (Worker 2)",
+        "func": "const task = msg.payload;\nconst processingTime = task.processingTime || 1000;\nconst acknowledge = msg.acknowledge;\n\nnode.status({fill:\"yellow\",shape:\"ring\",text:`Processing ${task.taskId}`});\n\n// Simulate processing delay\nsetTimeout(() => {\n    msg.payload = {\n        ...task,\n        worker: 'Worker 2',\n        status: 'completed',\n        completedAt: new Date().toISOString()\n    };\n    \n    // Acknowledge the message\n    if (acknowledge) acknowledge();\n    \n    node.status({fill:\"green\",shape:\"dot\",text:`Completed ${task.taskId}`});\n    node.send(msg);\n}, processingTime);\n\nreturn null;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 390,
+        "y": 340,
+        "wires": [
+            [
+                "debug_worker2_completed"
+            ]
+        ]
+    },
+    {
+        "id": "debug_task_created",
+        "type": "debug",
+        "z": "rabbitmq_queue_tab",
+        "name": "Task Created",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 590,
+        "y": 40,
+        "wires": []
+    },
+    {
+        "id": "debug_batch_created",
+        "type": "debug",
+        "z": "rabbitmq_queue_tab",
+        "name": "Batch Created",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 590,
+        "y": 160,
+        "wires": []
+    },
+    {
+        "id": "debug_worker1_received",
+        "type": "debug",
+        "z": "rabbitmq_queue_tab",
+        "name": "Worker 1 Received",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 320,
+        "y": 220,
+        "wires": []
+    },
+    {
+        "id": "debug_worker2_received",
+        "type": "debug",
+        "z": "rabbitmq_queue_tab",
+        "name": "Worker 2 Received",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 320,
+        "y": 300,
+        "wires": []
+    },
+    {
+        "id": "debug_worker1_completed",
+        "type": "debug",
+        "z": "rabbitmq_queue_tab",
+        "name": "Worker 1 Completed",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 620,
+        "y": 260,
+        "wires": []
+    },
+    {
+        "id": "debug_worker2_completed",
+        "type": "debug",
+        "z": "rabbitmq_queue_tab",
+        "name": "Worker 2 Completed",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 620,
+        "y": 340,
+        "wires": []
+    },
+    {
+        "id": "comment_producer",
+        "type": "comment",
+        "z": "rabbitmq_queue_tab",
+        "name": "Task Producer - Creates and sends tasks to queue",
+        "info": "Click 'Generate Task' to send a single task\nClick 'Generate 10 Tasks' to send multiple tasks at once",
+        "x": 250,
+        "y": 40,
+        "wires": []
+    },
+    {
+        "id": "comment_workers",
+        "type": "comment",
+        "z": "rabbitmq_queue_tab",
+        "name": "Workers - Two consumers competing for tasks (round-robin distribution) using amqplib",
+        "info": "Both workers consume from the same queue.\nRabbitMQ distributes tasks evenly between them.\nprefetch=1 ensures fair distribution.\nMessages are acknowledged after processing.",
+        "x": 340,
+        "y": 400,
+        "wires": []
+    },
+    {
+        "id": "start_worker1",
+        "type": "inject",
+        "z": "rabbitmq_queue_tab",
+        "name": "Start Worker 1",
+        "props": [],
+        "repeat": "",
+        "crontab": "",
+        "once": true,
+        "onceDelay": "2",
+        "topic": "",
+        "x": 140,
+        "y": 220,
+        "wires": [
+            [
+                "worker1_consumer"
+            ]
+        ]
+    },
+    {
+        "id": "start_worker2",
+        "type": "inject",
+        "z": "rabbitmq_queue_tab",
+        "name": "Start Worker 2",
+        "props": [],
+        "repeat": "",
+        "crontab": "",
+        "once": true,
+        "onceDelay": "2",
+        "topic": "",
+        "x": 140,
+        "y": 380,
+        "wires": [
+            [
+                "worker2_consumer"
+            ]
+        ]
+    }
+]

@@ -1,7 +1,7 @@
 #!/bin/bash
 #
-# Lynx IDV Stack Startup Script
-# This script sets up and starts the containerized stack on Ubuntu
+# Lynx IDV Stack Startup Script for macOS
+# This script sets up and starts the containerized stack on macOS
 #
 
 set -e  # Exit on error
@@ -46,164 +46,73 @@ while [[ $# -gt 0 ]]; do
 done
 
 echo -e "${GREEN}========================================${NC}"
-echo -e "${GREEN}  Lynx IDV Stack Setup${NC}"
+echo -e "${GREEN}  Lynx IDV Stack Setup (macOS)${NC}"
 echo -e "${GREEN}========================================${NC}"
 echo ""
-
-# Check if running on Ubuntu/Debian
-if [ -f /etc/os-release ]; then
-    . /etc/os-release
-    if [[ "$ID" != "ubuntu" && "$ID_LIKE" != *"debian"* ]]; then
-        echo -e "${YELLOW}Warning: This script is designed for Ubuntu. Your OS: $ID${NC}"
-        read -p "Continue anyway? (y/n) " -n 1 -r
-        echo
-        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-            exit 1
-        fi
-    fi
-else
-    echo -e "${YELLOW}Warning: Cannot detect OS. Proceeding anyway...${NC}"
-fi
 
 # Function to check if a command exists
 command_exists() {
     command -v "$1" >/dev/null 2>&1
 }
 
-# Function to install Docker
-install_docker() {
-    echo -e "${YELLOW}Installing Docker...${NC}"
-    
-    # Update apt package index
-    sudo apt-get update
-    
-    # Install prerequisites
-    sudo apt-get install -y \
-        ca-certificates \
-        curl \
-        gnupg \
-        lsb-release
-    
-    # Add Docker's official GPG key
-    sudo mkdir -p /etc/apt/keyrings
-    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
-    
-    # Set up the repository
-    echo \
-        "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
-        $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
-    
-    # Install Docker Engine
-    sudo apt-get update
-    
-    # Use DEBIAN_FRONTEND to avoid interactive prompts
-    DEBIAN_FRONTEND=noninteractive sudo apt-get install -y \
-        docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
-    
-    # Start Docker service explicitly
-    echo -e "${YELLOW}Starting Docker service...${NC}"
-    sudo systemctl start docker || true
-    sudo systemctl enable docker || true
-    
-    # Wait for Docker to be ready
-    echo -e "${YELLOW}Waiting for Docker daemon to be ready...${NC}"
-    MAX_WAIT=30
-    ELAPSED=0
-    while [ $ELAPSED -lt $MAX_WAIT ]; do
-        if sudo docker info >/dev/null 2>&1; then
-            break
-        fi
-        sleep 2
-        ELAPSED=$((ELAPSED + 2))
-    done
-    
-    # Add current user to docker group
-    sudo usermod -aG docker $USER
-    
-    echo -e "${GREEN}Docker installed successfully!${NC}"
-    echo -e "${YELLOW}Note: You may need to log out and back in for group changes to take effect.${NC}"
-    echo -e "${YELLOW}Or run: newgrp docker${NC}"
-}
+# Check if running on macOS
+if [[ "$OSTYPE" != "darwin"* ]]; then
+    echo -e "${RED}This script is designed for macOS. Current OS: $OSTYPE${NC}"
+    echo -e "${YELLOW}For Linux, use start-stack.sh instead.${NC}"
+    exit 1
+fi
 
-# Function to install Python and pip
-install_python() {
-    echo -e "${YELLOW}Installing Python 3, pip, and venv...${NC}"
-    sudo apt-get update
-    DEBIAN_FRONTEND=noninteractive sudo apt-get install -y \
-        python3 \
-        python3-pip \
-        python3-venv \
-        python3-dev \
-        build-essential
-    echo -e "${GREEN}Python installed successfully!${NC}"
-    
-    # Verify pip3 is working
-    if ! command_exists pip3; then
-        echo -e "${YELLOW}Ensuring pip3 is available...${NC}"
-        python3 -m ensurepip --upgrade
-    fi
-    
-    echo -e "${GREEN}✓ pip3 is ready${NC}"
-}
+echo -e "${GREEN}✓ Running on macOS${NC}"
 
-# Check and install Docker
+# Check Docker
 if ! command_exists docker; then
-    echo -e "${YELLOW}Docker not found.${NC}"
-    read -p "Would you like to install Docker? (y/n) " -n 1 -r
-    echo
-    if [[ $REPLY =~ ^[Yy]$ ]]; then
-        install_docker
-    else
-        echo -e "${RED}Docker is required to run this stack. Exiting.${NC}"
-        exit 1
-    fi
+    echo -e "${RED}Docker not found.${NC}"
+    echo -e "${YELLOW}Please install Docker Desktop for Mac from:${NC}"
+    echo -e "${YELLOW}https://www.docker.com/products/docker-desktop/${NC}"
+    exit 1
 else
     echo -e "${GREEN}✓ Docker is installed${NC}"
+    
+    # Check if Docker is running
+    if ! docker info >/dev/null 2>&1; then
+        echo -e "${RED}Docker is not running.${NC}"
+        echo -e "${YELLOW}Please start Docker Desktop and try again.${NC}"
+        exit 1
+    fi
+    echo -e "${GREEN}✓ Docker is running${NC}"
 fi
 
 # Check Docker Compose
 if ! docker compose version >/dev/null 2>&1; then
-    echo -e "${RED}Docker Compose is not available. Please install Docker Compose.${NC}"
+    echo -e "${RED}Docker Compose is not available.${NC}"
+    echo -e "${YELLOW}Docker Compose should be included with Docker Desktop.${NC}"
+    echo -e "${YELLOW}Please reinstall Docker Desktop.${NC}"
     exit 1
 else
     echo -e "${GREEN}✓ Docker Compose is installed${NC}"
 fi
 
-# Check and install Python
+# Check Python 3
 if ! command_exists python3; then
-    echo -e "${YELLOW}Python 3 not found.${NC}"
-    read -p "Would you like to install Python 3? (y/n) " -n 1 -r
-    echo
-    if [[ $REPLY =~ ^[Yy]$ ]]; then
-        install_python
-    else
-        echo -e "${RED}Python 3 is required for data generation. Exiting.${NC}"
-        exit 1
-    fi
+    echo -e "${RED}Python 3 not found.${NC}"
+    echo -e "${YELLOW}Please install Python 3 using Homebrew:${NC}"
+    echo -e "${YELLOW}  brew install python3${NC}"
+    echo -e "${YELLOW}Or download from: https://www.python.org/downloads/${NC}"
+    exit 1
 else
     echo -e "${GREEN}✓ Python 3 is installed${NC}"
 fi
 
-# Ensure pip3 is installed
+# Check pip3
 if ! command_exists pip3; then
     echo -e "${YELLOW}pip3 not found. Installing...${NC}"
-    sudo apt-get update
-    DEBIAN_FRONTEND=noninteractive sudo apt-get install -y python3-pip python3-venv
-    echo -e "${GREEN}✓ pip3 is installed${NC}"
-else
-    echo -e "${GREEN}✓ pip3 is installed${NC}"
+    python3 -m ensurepip --upgrade
+    if ! command_exists pip3; then
+        echo -e "${RED}Failed to install pip3. Please install manually.${NC}"
+        exit 1
+    fi
 fi
-
-# Ensure python3-venv is installed
-echo -e "${YELLOW}Checking for python3-venv...${NC}"
-if ! dpkg -l | grep -q python3-venv; then
-    echo -e "${YELLOW}python3-venv not found. Installing...${NC}"
-    sudo apt-get update
-    DEBIAN_FRONTEND=noninteractive sudo apt-get install -y python3-venv
-    echo -e "${GREEN}✓ python3-venv is installed${NC}"
-else
-    echo -e "${GREEN}✓ python3-venv is already installed${NC}"
-fi
+echo -e "${GREEN}✓ pip3 is installed${NC}"
 
 # Navigate to script directory
 cd "$SCRIPT_DIR"
@@ -329,16 +238,8 @@ if [ "$SKIP_DATA_GENERATION" = false ] && [ "$OPENSEARCH_READY" = true ]; then
         echo -e "${YELLOW}Creating new virtual environment...${NC}"
         python3 -m venv venv
         
-        if [ $? -ne 0 ]; then
-            echo -e "${RED}Failed to create virtual environment.${NC}"
-            echo -e "${YELLOW}Trying to install python3-venv...${NC}"
-            sudo apt-get update
-            DEBIAN_FRONTEND=noninteractive sudo apt-get install -y python3-venv
-            python3 -m venv venv
-        fi
-        
         if [ ! -f "venv/bin/activate" ]; then
-            echo -e "${RED}Virtual environment creation failed. Please check python3-venv installation.${NC}"
+            echo -e "${RED}Virtual environment creation failed.${NC}"
             exit 1
         fi
         
@@ -371,8 +272,10 @@ if [ "$SKIP_DATA_GENERATION" = false ] && [ "$OPENSEARCH_READY" = true ]; then
     
     echo -e "${GREEN}✓ Data generation completed!${NC}"
 else
-    echo ""
-    echo -e "${YELLOW}Skipping data generation (--skip-data flag set)${NC}"
+    if [ "$SKIP_DATA_GENERATION" = true ]; then
+        echo ""
+        echo -e "${YELLOW}Skipping data generation (--skip-data flag set)${NC}"
+    fi
 fi
 
 # Display access information
@@ -405,9 +308,8 @@ echo "  4. Explore the graph to see relationships between users, verifications, 
 echo ""
 echo -e "${GREEN}Network Access:${NC}"
 echo "  The Web UI is accessible from other machines on your network."
-echo "  Find your IP: ${YELLOW}hostname -I${NC}"
+echo "  Find your IP: ${YELLOW}ipconfig getifaddr en0${NC} (or en1 for WiFi)"
 echo "  Access from network: ${GREEN}http://YOUR_IP:5050${NC}"
-echo "  Open firewall if needed: ${YELLOW}sudo ufw allow 5050/tcp${NC}"
 echo ""
 echo "To view logs:"
 echo "  docker compose logs -f"
