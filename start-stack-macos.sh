@@ -207,21 +207,39 @@ if docker exec lynx-nodered npm install amqplib >/dev/null 2>&1; then
     sleep 5
     echo -e "${GREEN}✓ Node-RED restarted${NC}"
     
-    # Import the RabbitMQ work queue example flow
-    echo -e "${YELLOW}Importing RabbitMQ work queue example flow...${NC}"
+    # Import the RabbitMQ work queue example flows
+    echo -e "${YELLOW}Importing RabbitMQ work queue example flows...${NC}"
+    sleep 2  # Wait for Node-RED to fully start
+    
+    # Import basic work queue flow
     if [ -f "${SCRIPT_DIR}/rabbitmq_queue_flow.json" ]; then
-        sleep 2  # Wait for Node-RED to fully start
         if curl -s -X POST http://localhost:1880/flows \
             -H "Content-Type: application/json" \
             -H "Node-RED-Deployment-Type: flows" \
             -d @"${SCRIPT_DIR}/rabbitmq_queue_flow.json" >/dev/null 2>&1; then
-            echo -e "${GREEN}✓ RabbitMQ work queue flow imported${NC}"
+            echo -e "${GREEN}✓ RabbitMQ basic work queue flow imported${NC}"
         else
-            echo -e "${YELLOW}⚠ Could not import flow automatically${NC}"
+            echo -e "${YELLOW}⚠ Could not import basic flow automatically${NC}"
             echo "  You can import rabbitmq_queue_flow.json manually in Node-RED"
         fi
     else
         echo -e "${YELLOW}⚠ rabbitmq_queue_flow.json not found, skipping import${NC}"
+    fi
+    
+    # Import advanced patterns flow (prefetch, priority, DLQ)
+    if [ -f "${SCRIPT_DIR}/rabbitmq_advanced_flows.json" ]; then
+        sleep 1
+        if curl -s -X POST http://localhost:1880/flows \
+            -H "Content-Type: application/json" \
+            -H "Node-RED-Deployment-Type: flows" \
+            -d @"${SCRIPT_DIR}/rabbitmq_advanced_flows.json" >/dev/null 2>&1; then
+            echo -e "${GREEN}✓ RabbitMQ advanced patterns flow imported (Prefetch, Priority, DLQ)${NC}"
+        else
+            echo -e "${YELLOW}⚠ Could not import advanced flow automatically${NC}"
+            echo "  You can import rabbitmq_advanced_flows.json manually in Node-RED"
+        fi
+    else
+        echo -e "${YELLOW}⚠ rabbitmq_advanced_flows.json not found, skipping import${NC}"
     fi
 else
     echo -e "${YELLOW}⚠ Could not install amqplib automatically${NC}"
