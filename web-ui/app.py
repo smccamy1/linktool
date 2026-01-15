@@ -37,6 +37,12 @@ def index():
     return render_template('index.html')
 
 
+@app.route('/investigations')
+def investigations_page():
+    """Serve the investigations management page."""
+    return render_template('investigations.html')
+
+
 @app.route('/api/graph-data')
 def get_graph_data():
     """
@@ -374,6 +380,142 @@ def list_investigations():
         return jsonify({
             'error': str(e)
         }), 500
+
+
+@app.route('/api/investigations/<investigation_id>', methods=['GET'])
+def get_investigation(investigation_id):
+    """Get a specific investigation by ID"""
+    try:
+        from bson.objectid import ObjectId
+        db = get_mongo_connection()
+        
+        investigation = db.investigations.find_one({'_id': ObjectId(investigation_id)})
+        
+        if not investigation:
+            return jsonify({'error': 'Investigation not found'}), 404
+        
+        investigation['_id'] = str(investigation['_id'])
+        
+        return jsonify(investigation)
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/investigations/<investigation_id>', methods=['PUT'])
+def update_investigation(investigation_id):
+    """Update an investigation"""
+    try:
+        from bson.objectid import ObjectId
+        db = get_mongo_connection()
+        data = request.json
+        
+        # Prepare update document
+        update_fields = {}
+        if 'name' in data:
+            update_fields['name'] = data['name']
+        if 'description' in data:
+            update_fields['description'] = data['description']
+        if 'status' in data:
+            update_fields['status'] = data['status']
+        if 'notes' in data:
+            update_fields['notes'] = data['notes']
+        
+        update_fields['updatedAt'] = datetime.utcnow().isoformat()
+        
+        result = db.investigations.update_one(
+            {'_id': ObjectId(investigation_id)},
+            {'$set': update_fields}
+        )
+        
+        if result.matched_count == 0:
+            return jsonify({'error': 'Investigation not found'}), 404
+        
+        return jsonify({
+            'success': True,
+            'message': 'Investigation updated successfully'
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/investigations/<investigation_id>/nodes', methods=['POST'])
+def add_node_to_investigation(investigation_id):
+    """Add a node to an investigation"""
+    try:
+        from bson.objectid import ObjectId
+        db = get_mongo_connection()
+        data = request.json
+        
+        node_data = {
+            'nodeId': data['nodeId'],
+            'nodeType': data['nodeType'],
+            'label': data['label'],
+            'data': data.get('data', {}),
+            'addedAt': datetime.utcnow().isoformat()
+        }
+        
+        result = db.investigations.update_one(
+            {'_id': ObjectId(investigation_id)},
+            {'$push': {'nodes': node_data}}
+        )
+        
+        if result.matched_count == 0:
+            return jsonify({'error': 'Investigation not found'}), 404
+        
+        return jsonify({
+            'success': True,
+            'message': 'Node added to investigation'
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/investigations/<investigation_id>/nodes/<node_id>', methods=['DELETE'])
+def remove_node_from_investigation(investigation_id, node_id):
+    """Remove a node from an investigation"""
+    try:
+        from bson.objectid import ObjectId
+        db = get_mongo_connection()
+        
+        result = db.investigations.update_one(
+            {'_id': ObjectId(investigation_id)},
+            {'$pull': {'nodes': {'nodeId': node_id}}}
+        )
+        
+        if result.matched_count == 0:
+            return jsonify({'error': 'Investigation not found'}), 404
+        
+        return jsonify({
+            'success': True,
+            'message': 'Node removed from investigation'
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/investigations/<investigation_id>', methods=['DELETE'])
+def delete_investigation(investigation_id):
+    """Delete an investigation"""
+    try:
+        from bson.objectid import ObjectId
+        db = get_mongo_connection()
+        
+        result = db.investigations.delete_one({'_id': ObjectId(investigation_id)})
+        
+        if result.deleted_count == 0:
+            return jsonify({'error': 'Investigation not found'}), 404
+        
+        return jsonify({
+            'success': True,
+            'message': 'Investigation deleted successfully'
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 
 @app.route('/api/fraud-patterns/ip-velocity')

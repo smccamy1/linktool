@@ -30,17 +30,49 @@
             padding: 20px 30px;
             margin-bottom: 20px;
             box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
 
-        .header h1 {
+        .header-content {
+            flex: 1;
+        }
+
+        .header-content h1 {
             color: #333;
             font-size: 28px;
             margin-bottom: 10px;
         }
 
-        .header p {
+        .header-content p {
             color: #666;
             font-size: 14px;
+        }
+
+        .nav-buttons {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .nav-btn {
+            padding: 10px 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .nav-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
         }
 
         .stats {
@@ -488,29 +520,37 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>🔍 Lynx IDV Graph Visualization</h1>
-            <p>Interactive visualization of Identity Verification data with integrated insurance customer information</p>
-            <div class="stats" id="stats">
-                <div class="stat-card">
-                    <h3 id="stat-users">-</h3>
-                    <p>IDV Users</p>
-                </div>
-                <div class="stat-card">
-                    <h3 id="stat-verifications">-</h3>
-                    <p>Verifications</p>
-                </div>
-                <div class="stat-card">
-                    <h3 id="stat-customers">-</h3>
-                    <p>Insurance Customers</p>
-                </div>
-                <div class="stat-card">
-                    <h3 id="stat-policies">-</h3>
-                    <p>Active Policies</p>
-                </div>
-                <div class="stat-card">
-                    <h3 id="stat-claims">-</h3>
-                    <p>Total Claims</p>
-                </div>
+            <div class="header-content">
+                <h1>🔍 Lynx IDV Graph Visualization</h1>
+                <p>Interactive visualization of Identity Verification data with integrated insurance customer information</p>
+            </div>
+            <div class="nav-buttons">
+                <a href="/investigations" class="nav-btn">
+                    <span>📋</span> Investigations
+                </a>
+            </div>
+        </div>
+        
+        <div class="stats" id="stats" style="margin-bottom: 20px;">
+            <div class="stat-card">
+                <h3 id="stat-users">-</h3>
+                <p>IDV Users</p>
+            </div>
+            <div class="stat-card">
+                <h3 id="stat-verifications">-</h3>
+                <p>Verifications</p>
+            </div>
+            <div class="stat-card">
+                <h3 id="stat-customers">-</h3>
+                <p>Insurance Customers</p>
+            </div>
+            <div class="stat-card">
+                <h3 id="stat-policies">-</h3>
+                <p>Active Policies</p>
+            </div>
+            <div class="stat-card">
+                <h3 id="stat-claims">-</h3>
+                <p>Total Claims</p>
             </div>
         </div>
 

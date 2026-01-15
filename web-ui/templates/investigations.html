@@ -1,0 +1,835 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lynx - Investigations</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            border-radius: 15px;
+            padding: 20px 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header-left h1 {
+            color: #333;
+            font-size: 28px;
+            margin-bottom: 5px;
+        }
+
+        .header-left p {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .nav-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: #f0f0f0;
+            color: #333;
+        }
+
+        .btn-secondary:hover {
+            background: #e0e0e0;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+
+        .stat-card h3 {
+            font-size: 32px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 5px;
+        }
+
+        .stat-card p {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .investigations-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .investigation-card {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .investigation-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(0,0,0,0.15);
+        }
+
+        .investigation-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 15px;
+        }
+
+        .investigation-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .investigation-date {
+            font-size: 12px;
+            color: #999;
+        }
+
+        .investigation-status {
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+            text-transform: uppercase;
+        }
+
+        .status-active {
+            background: #dcfce7;
+            color: #16a34a;
+        }
+
+        .status-closed {
+            background: #fee2e2;
+            color: #dc2626;
+        }
+
+        .status-pending {
+            background: #fef3c7;
+            color: #ca8a04;
+        }
+
+        .investigation-description {
+            color: #666;
+            font-size: 14px;
+            line-height: 1.5;
+            margin-bottom: 15px;
+        }
+
+        .investigation-nodes {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+
+        .node-count-badge {
+            padding: 5px 10px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .node-count-badge.users {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+
+        .node-count-badge.verifications {
+            background: #fce7f3;
+            color: #be185d;
+        }
+
+        .node-count-badge.attempts {
+            background: #e0e7ff;
+            color: #4338ca;
+        }
+
+        .investigation-actions {
+            display: flex;
+            gap: 10px;
+            padding-top: 15px;
+            border-top: 1px solid #e5e5e5;
+        }
+
+        .btn-small {
+            padding: 6px 12px;
+            font-size: 13px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            flex: 1;
+        }
+
+        .btn-view {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-view:hover {
+            background: #5568d3;
+        }
+
+        .btn-edit {
+            background: #f0f0f0;
+            color: #333;
+        }
+
+        .btn-edit:hover {
+            background: #e0e0e0;
+        }
+
+        .btn-delete {
+            background: #fee2e2;
+            color: #dc2626;
+        }
+
+        .btn-delete:hover {
+            background: #fecaca;
+        }
+
+        .empty-state {
+            background: white;
+            border-radius: 15px;
+            padding: 60px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+
+        .empty-state h2 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .empty-state p {
+            color: #666;
+            margin-bottom: 20px;
+        }
+
+        /* Modal Styles */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            backdrop-filter: blur(5px);
+        }
+
+        .modal-overlay.active {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal {
+            background: white;
+            border-radius: 15px;
+            max-width: 900px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+
+        .modal-header {
+            padding: 25px 30px;
+            border-bottom: 1px solid #e5e5e5;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-header h2 {
+            color: #333;
+            font-size: 24px;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 28px;
+            cursor: pointer;
+            color: #999;
+            transition: color 0.3s;
+        }
+
+        .modal-close:hover {
+            color: #333;
+        }
+
+        .modal-body {
+            padding: 30px;
+        }
+
+        .detail-section {
+            margin-bottom: 25px;
+        }
+
+        .detail-section h3 {
+            color: #333;
+            font-size: 18px;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .detail-row {
+            display: flex;
+            padding: 10px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .detail-label {
+            font-weight: 500;
+            color: #666;
+            width: 150px;
+        }
+
+        .detail-value {
+            color: #333;
+            flex: 1;
+        }
+
+        .nodes-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 15px;
+        }
+
+        .node-item {
+            background: #f9fafb;
+            padding: 15px;
+            border-radius: 10px;
+            border: 1px solid #e5e5e7;
+        }
+
+        .node-item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .node-item-title {
+            font-weight: 600;
+            color: #333;
+            font-size: 14px;
+        }
+
+        .node-type-badge {
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 500;
+            text-transform: uppercase;
+        }
+
+        .node-type-user {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+
+        .node-type-verification {
+            background: #fce7f3;
+            color: #be185d;
+        }
+
+        .node-type-attempt {
+            background: #e0e7ff;
+            color: #4338ca;
+        }
+
+        .node-item-details {
+            font-size: 12px;
+            color: #666;
+            line-height: 1.6;
+        }
+
+        .btn-remove-node {
+            background: #fee2e2;
+            color: #dc2626;
+            border: none;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-remove-node:hover {
+            background: #fecaca;
+        }
+
+        /* Edit Form */
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            color: #333;
+            font-weight: 500;
+            margin-bottom: 8px;
+        }
+
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            padding: 10px 15px;
+            border: 1px solid #e5e5e5;
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: inherit;
+        }
+
+        .form-group textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+
+        .form-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            padding-top: 20px;
+            border-top: 1px solid #e5e5e5;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: white;
+            font-size: 18px;
+        }
+
+        .error {
+            background: #fee2e2;
+            color: #dc2626;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="header-left">
+                <h1>🔍 Investigations</h1>
+                <p>Manage and track identity verification investigations</p>
+            </div>
+            <div class="nav-buttons">
+                <a href="/" class="btn btn-secondary">
+                    <span>📊</span> Graph View
+                </a>
+            </div>
+        </div>
+
+        <div class="stats" id="stats-container">
+            <!-- Stats will be loaded here -->
+        </div>
+
+        <div id="loading" class="loading">
+            Loading investigations...
+        </div>
+
+        <div id="error-container"></div>
+
+        <div id="investigations-container" class="investigations-grid" style="display: none;">
+            <!-- Investigation cards will be loaded here -->
+        </div>
+
+        <div id="empty-state" class="empty-state" style="display: none;">
+            <h2>No Investigations Yet</h2>
+            <p>Start by creating an investigation from the graph view.<br>
+            Select nodes and click "Add to Investigation" to get started.</p>
+            <a href="/" class="btn btn-primary">Go to Graph View</a>
+        </div>
+    </div>
+
+    <!-- View Investigation Modal -->
+    <div id="view-modal" class="modal-overlay">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 id="modal-title">Investigation Details</h2>
+                <button class="modal-close" onclick="closeViewModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="detail-section">
+                    <div class="detail-row">
+                        <div class="detail-label">Name:</div>
+                        <div class="detail-value" id="detail-name"></div>
+                    </div>
+                    <div class="detail-row">
+                        <div class="detail-label">Status:</div>
+                        <div class="detail-value" id="detail-status"></div>
+                    </div>
+                    <div class="detail-row">
+                        <div class="detail-label">Created:</div>
+                        <div class="detail-value" id="detail-created"></div>
+                    </div>
+                    <div class="detail-row">
+                        <div class="detail-label">Description:</div>
+                        <div class="detail-value" id="detail-description"></div>
+                    </div>
+                </div>
+
+                <div class="detail-section">
+                    <h3>📋 Investigation Nodes (<span id="nodes-count">0</span>)</h3>
+                    <div class="nodes-list" id="nodes-list">
+                        <!-- Nodes will be loaded here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Investigation Modal -->
+    <div id="edit-modal" class="modal-overlay">
+        <div class="modal">
+            <div class="modal-header">
+                <h2>Edit Investigation</h2>
+                <button class="modal-close" onclick="closeEditModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="edit-form" onsubmit="saveInvestigation(event)">
+                    <div class="form-group">
+                        <label for="edit-name">Investigation Name *</label>
+                        <input type="text" id="edit-name" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="edit-description">Description</label>
+                        <textarea id="edit-description"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="edit-status">Status</label>
+                        <select id="edit-status">
+                            <option value="active">Active</option>
+                            <option value="pending">Pending</option>
+                            <option value="closed">Closed</option>
+                        </select>
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" class="btn btn-secondary" onclick="closeEditModal()">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Save Changes</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let investigations = [];
+        let currentInvestigationId = null;
+
+        // Load investigations on page load
+        async function loadInvestigations() {
+            try {
+                const response = await fetch('/api/investigations');
+                const data = await response.json();
+                
+                investigations = data.investigations || [];
+                
+                document.getElementById('loading').style.display = 'none';
+                
+                if (investigations.length === 0) {
+                    document.getElementById('empty-state').style.display = 'block';
+                    document.getElementById('investigations-container').style.display = 'none';
+                } else {
+                    document.getElementById('empty-state').style.display = 'none';
+                    document.getElementById('investigations-container').style.display = 'grid';
+                    renderInvestigations();
+                }
+                
+                renderStats();
+            } catch (error) {
+                console.error('Error loading investigations:', error);
+                document.getElementById('loading').style.display = 'none';
+                showError('Failed to load investigations. Please try again.');
+            }
+        }
+
+        function renderStats() {
+            const activeCount = investigations.filter(inv => inv.status === 'active').length;
+            const closedCount = investigations.filter(inv => inv.status === 'closed').length;
+            const totalNodes = investigations.reduce((sum, inv) => sum + (inv.nodes?.length || 0), 0);
+            
+            document.getElementById('stats-container').innerHTML = `
+                <div class="stat-card">
+                    <h3>${investigations.length}</h3>
+                    <p>Total Investigations</p>
+                </div>
+                <div class="stat-card">
+                    <h3>${activeCount}</h3>
+                    <p>Active</p>
+                </div>
+                <div class="stat-card">
+                    <h3>${closedCount}</h3>
+                    <p>Closed</p>
+                </div>
+                <div class="stat-card">
+                    <h3>${totalNodes}</h3>
+                    <p>Total Nodes</p>
+                </div>
+            `;
+        }
+
+        function renderInvestigations() {
+            const container = document.getElementById('investigations-container');
+            
+            container.innerHTML = investigations.map(inv => {
+                const nodesByType = (inv.nodes || []).reduce((acc, node) => {
+                    acc[node.nodeType] = (acc[node.nodeType] || 0) + 1;
+                    return acc;
+                }, {});
+                
+                const statusClass = `status-${inv.status || 'active'}`;
+                const createdDate = new Date(inv.createdAt).toLocaleDateString();
+                
+                return `
+                    <div class="investigation-card" onclick="viewInvestigation('${inv._id}')">
+                        <div class="investigation-card-header">
+                            <div>
+                                <div class="investigation-title">${escapeHtml(inv.name)}</div>
+                                <div class="investigation-date">${createdDate}</div>
+                            </div>
+                            <span class="investigation-status ${statusClass}">${inv.status || 'active'}</span>
+                        </div>
+                        <div class="investigation-description">
+                            ${escapeHtml(inv.description || 'No description provided')}
+                        </div>
+                        <div class="investigation-nodes">
+                            ${nodesByType.user ? `<span class="node-count-badge users">👤 ${nodesByType.user} Users</span>` : ''}
+                            ${nodesByType.verification ? `<span class="node-count-badge verifications">✓ ${nodesByType.verification} Verifications</span>` : ''}
+                            ${nodesByType.attempt ? `<span class="node-count-badge attempts">🔄 ${nodesByType.attempt} Attempts</span>` : ''}
+                            ${!nodesByType.user && !nodesByType.verification && !nodesByType.attempt ? 
+                                `<span class="node-count-badge" style="background: #f0f0f0; color: #666;">No nodes</span>` : ''}
+                        </div>
+                        <div class="investigation-actions" onclick="event.stopPropagation()">
+                            <button class="btn-small btn-view" onclick="viewInvestigation('${inv._id}')">View Details</button>
+                            <button class="btn-small btn-edit" onclick="editInvestigation('${inv._id}')">Edit</button>
+                            <button class="btn-small btn-delete" onclick="deleteInvestigation('${inv._id}')">Delete</button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        async function viewInvestigation(id) {
+            try {
+                const response = await fetch(`/api/investigations/${id}`);
+                const investigation = await response.json();
+                
+                currentInvestigationId = id;
+                
+                document.getElementById('detail-name').textContent = investigation.name;
+                document.getElementById('detail-status').innerHTML = 
+                    `<span class="investigation-status status-${investigation.status || 'active'}">${investigation.status || 'active'}</span>`;
+                document.getElementById('detail-created').textContent = new Date(investigation.createdAt).toLocaleString();
+                document.getElementById('detail-description').textContent = investigation.description || 'No description provided';
+                
+                const nodesList = document.getElementById('nodes-list');
+                const nodes = investigation.nodes || [];
+                document.getElementById('nodes-count').textContent = nodes.length;
+                
+                if (nodes.length === 0) {
+                    nodesList.innerHTML = '<p style="color: #999; text-align: center; padding: 20px;">No nodes in this investigation</p>';
+                } else {
+                    nodesList.innerHTML = nodes.map((node, index) => `
+                        <div class="node-item">
+                            <div class="node-item-header">
+                                <div class="node-item-title">${escapeHtml(node.label)}</div>
+                                <div>
+                                    <span class="node-type-badge node-type-${node.nodeType}">${node.nodeType}</span>
+                                </div>
+                            </div>
+                            <div class="node-item-details">
+                                <strong>Node ID:</strong> ${node.nodeId}<br>
+                                ${node.data?.email ? `<strong>Email:</strong> ${node.data.email}<br>` : ''}
+                                ${node.data?.status ? `<strong>Status:</strong> ${node.data.status}<br>` : ''}
+                                ${node.data?.riskLevel ? `<strong>Risk Level:</strong> ${node.data.riskLevel}<br>` : ''}
+                                ${node.addedAt ? `<strong>Added:</strong> ${new Date(node.addedAt).toLocaleString()}` : ''}
+                            </div>
+                        </div>
+                    `).join('');
+                }
+                
+                document.getElementById('view-modal').classList.add('active');
+            } catch (error) {
+                console.error('Error loading investigation details:', error);
+                showError('Failed to load investigation details');
+            }
+        }
+
+        function closeViewModal() {
+            document.getElementById('view-modal').classList.remove('active');
+            currentInvestigationId = null;
+        }
+
+        function editInvestigation(id) {
+            const investigation = investigations.find(inv => inv._id === id);
+            if (!investigation) return;
+            
+            currentInvestigationId = id;
+            document.getElementById('edit-name').value = investigation.name;
+            document.getElementById('edit-description').value = investigation.description || '';
+            document.getElementById('edit-status').value = investigation.status || 'active';
+            
+            document.getElementById('edit-modal').classList.add('active');
+        }
+
+        function closeEditModal() {
+            document.getElementById('edit-modal').classList.remove('active');
+            currentInvestigationId = null;
+        }
+
+        async function saveInvestigation(event) {
+            event.preventDefault();
+            
+            if (!currentInvestigationId) return;
+            
+            const name = document.getElementById('edit-name').value;
+            const description = document.getElementById('edit-description').value;
+            const status = document.getElementById('edit-status').value;
+            
+            try {
+                const response = await fetch(`/api/investigations/${currentInvestigationId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        name,
+                        description,
+                        status
+                    })
+                });
+                
+                if (response.ok) {
+                    closeEditModal();
+                    loadInvestigations();
+                } else {
+                    const error = await response.json();
+                    showError('Failed to update investigation: ' + error.message);
+                }
+            } catch (error) {
+                console.error('Error updating investigation:', error);
+                showError('Failed to update investigation');
+            }
+        }
+
+        async function deleteInvestigation(id) {
+            if (!confirm('Are you sure you want to delete this investigation? This action cannot be undone.')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/investigations/${id}`, {
+                    method: 'DELETE'
+                });
+                
+                if (response.ok) {
+                    loadInvestigations();
+                } else {
+                    const error = await response.json();
+                    showError('Failed to delete investigation: ' + error.message);
+                }
+            } catch (error) {
+                console.error('Error deleting investigation:', error);
+                showError('Failed to delete investigation');
+            }
+        }
+
+        function showError(message) {
+            const container = document.getElementById('error-container');
+            container.innerHTML = `<div class="error">${escapeHtml(message)}</div>`;
+            setTimeout(() => {
+                container.innerHTML = '';
+            }, 5000);
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Load investigations on page load
+        loadInvestigations();
+    </script>
+</body>
+</html>
