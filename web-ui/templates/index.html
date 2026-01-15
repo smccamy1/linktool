@@ -691,19 +691,35 @@
                 const response = await fetch('/api/graph-data');
                 const data = await response.json();
                 
-                // Prepare nodes
+                // Calculate degree (number of connections) for each node
+                const nodeDegree = {};
+                data.nodes.forEach(node => {
+                    nodeDegree[node.id] = 0;
+                });
+                
+                data.edges.forEach(edge => {
+                    if (nodeDegree[edge.source] !== undefined) nodeDegree[edge.source]++;
+                    if (nodeDegree[edge.target] !== undefined) nodeDegree[edge.target]++;
+                });
+                
+                // Find min and max degree for scaling
+                const degrees = Object.values(nodeDegree);
+                const minDegree = Math.min(...degrees);
+                const maxDegree = Math.max(...degrees);
+                
+                // Prepare nodes with dynamic sizing based on degree
                 const nodesArray = data.nodes.map(node => {
-                    let color, shape, size;
+                    let color, shape, baseSize;
                     
                     switch (node.type) {
                         case 'user':
                             color = '#667eea';
                             shape = 'dot';
-                            size = 25;
+                            baseSize = 15;
                             break;
                         case 'verification':
                             shape = 'diamond';
-                            size = 20;
+                            baseSize = 12;
                             switch (node.status) {
                                 case 'approved':
                                     color = '#4ade80';
@@ -722,9 +738,22 @@
                         case 'attempt':
                             color = '#94a3b8';
                             shape = 'square';
-                            size = 15;
+                            baseSize = 10;
                             break;
                     }
+                    
+                    // Calculate size based on degree
+                    // Scale from baseSize to baseSize * 3 based on connections
+                    const degree = nodeDegree[node.id] || 0;
+                    let size = baseSize;
+                    
+                    if (maxDegree > minDegree) {
+                        const normalizedDegree = (degree - minDegree) / (maxDegree - minDegree);
+                        size = baseSize + (baseSize * 2 * normalizedDegree);
+                    }
+                    
+                    // Ensure minimum size
+                    size = Math.max(size, baseSize * 0.8);
                     
                     return {
                         id: node.id,
@@ -733,7 +762,8 @@
                         shape: shape,
                         size: size,
                         type: node.type,
-                        data: node.data
+                        data: node.data,
+                        degree: degree  // Store for reference
                     };
                 });
                 
